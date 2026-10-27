@@ -1,4 +1,4 @@
-// QuickPay Application Script
+// QuickPay Application Logic - Mobile First & Clean UI
 
 // Default Merchant Configuration
 const DEFAULT_CONFIG = {
@@ -12,6 +12,7 @@ let generatedPaymentUri = '';
 let currentAmount = 0;
 let isAmountVisible = true;
 let deferredPrompt = null;
+let toastTimeout = null;
 
 // Initialize Application
 window.addEventListener('load', () => {
@@ -24,24 +25,59 @@ window.addEventListener('load', () => {
     }
 });
 
+// Haptic Feedback for Mobile Feel
+function triggerHaptic(duration = 15) {
+    if ('vibrate' in navigator) {
+        try {
+            navigator.vibrate(duration);
+        } catch (e) {
+            // Ignore unsupported permissions
+        }
+    }
+}
+
+// Lightweight Toast Notification
+function showToast(message, iconName = 'check-circle') {
+    const toast = document.getElementById('toastNotification');
+    const toastMessage = document.getElementById('toastMessage');
+    const toastIcon = document.getElementById('toastIcon');
+
+    if (!toast) return;
+
+    if (toastTimeout) {
+        clearTimeout(toastTimeout);
+    }
+
+    if (toastMessage) toastMessage.textContent = message;
+    if (toastIcon && iconName) {
+        toastIcon.setAttribute('data-lucide', iconName);
+        if (window.lucide) lucide.createIcons();
+    }
+
+    toast.classList.remove('hidden');
+    toast.classList.add('animate-toast');
+
+    toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('animate-toast');
+    }, 2500);
+}
+
 // Register Service Worker for PWA
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => {
-                    console.log('ServiceWorker registered successfully with scope:', reg.scope);
-                })
-                .catch(err => {
-                    console.warn('ServiceWorker registration failed:', err);
-                });
-        });
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => {
+                console.log('ServiceWorker registered with scope:', reg.scope);
+            })
+            .catch(err => {
+                console.warn('ServiceWorker registration error:', err);
+            });
     }
 }
 
 // PWA Setup & Installation Handlers
 function initPWA() {
-    // Android / Chrome / Desktop install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
@@ -55,7 +91,7 @@ function initPWA() {
         deferredPrompt = null;
         const installBtn = document.getElementById('pwaInstallBtn');
         if (installBtn) installBtn.classList.add('hidden');
-        console.log('QuickPay successfully installed as PWA');
+        showToast('App installed successfully!', 'smartphone');
     });
 
     // iOS Safari Detection
@@ -71,20 +107,24 @@ function initPWA() {
 }
 
 function triggerPWAInstall() {
+    triggerHaptic(20);
     if (deferredPrompt) {
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the PWA install prompt');
+                showToast('Installing QuickPay...', 'download');
             }
             deferredPrompt = null;
             const installBtn = document.getElementById('pwaInstallBtn');
             if (installBtn) installBtn.classList.add('hidden');
         });
+    } else {
+        showToast('Use browser menu to Install App', 'info');
     }
 }
 
 function dismissIosBanner() {
+    triggerHaptic(10);
     localStorage.setItem('qp_ios_banner_dismissed', 'true');
     const iosBanner = document.getElementById('iosInstallBanner');
     if (iosBanner) {
@@ -106,6 +146,7 @@ function initTheme() {
 }
 
 function toggleDarkMode() {
+    triggerHaptic(15);
     document.documentElement.classList.toggle('dark');
     const isDark = document.documentElement.classList.contains('dark');
     localStorage.setItem('qp_theme', isDark ? 'dark' : 'light');
@@ -150,7 +191,7 @@ function updateMerchantUI() {
     if (qrShopEl) qrShopEl.textContent = merchantName;
     if (qrUpiEl) qrUpiEl.textContent = upiId;
 
-    // Reset logo image visibility check
+    // Reset logo fallback
     const imgEl = document.getElementById('merchantLogoImg');
     const fallbackEl = document.getElementById('merchantLogoFallback');
     if (imgEl) imgEl.classList.remove('hidden');
@@ -166,46 +207,108 @@ function handleLogoError(img) {
     }
 }
 
+function copyUpiId() {
+    triggerHaptic(20);
+    const upi = merchantConfig.vpa || DEFAULT_CONFIG.vpa;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(upi).then(() => {
+            showToast('UPI ID copied to clipboard!', 'check');
+        }).catch(() => {
+            fallbackCopy(upi);
+        });
+    } else {
+        fallbackCopy(upi);
+    }
+}
+
+function fallbackCopy(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        showToast('UPI ID copied!', 'check');
+    } catch (err) {
+        showToast('Copy failed, please copy manually', 'alert-circle');
+    }
+    document.body.removeChild(textArea);
+}
+
 function openSettingsModal() {
+    triggerHaptic(15);
     document.getElementById('settingUpiId').value = merchantConfig.vpa || '';
     document.getElementById('settingMerchantName').value = merchantConfig.name || '';
     const modal = document.getElementById('settingsModal');
-    if (modal) modal.classList.remove('hidden');
+    if (modal) {
+        modal.classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    }
 }
 
 function closeSettingsModal() {
+    triggerHaptic(10);
     const modal = document.getElementById('settingsModal');
     if (modal) modal.classList.add('hidden');
 }
 
 function saveSettings() {
+    triggerHaptic(25);
     const upiId = document.getElementById('settingUpiId').value.trim();
     const merchantName = document.getElementById('settingMerchantName').value.trim();
 
     if (!upiId || !upiId.includes('@')) {
-        alert('Please enter a valid UPI ID (e.g. name@upi)');
+        showToast('Please enter a valid UPI ID (e.g. name@upi)', 'alert-circle');
         return;
     }
 
     merchantConfig.vpa = upiId;
-    merchantConfig.name = merchantName || 'Merchant Payment';
+    merchantConfig.name = merchantName || 'QuickPay Merchant';
 
     localStorage.setItem('qp_merchant_settings', JSON.stringify(merchantConfig));
     updateMerchantUI();
     closeSettingsModal();
+    showToast('Merchant settings saved!', 'check-check');
 }
 
-// Quick Amount Selectors
+// Amount Input Helpers
 function setQuickAmount(val) {
+    triggerHaptic(15);
     const amountInput = document.getElementById('paymentAmount');
     if (amountInput) {
         amountInput.value = val;
+        toggleClearBtn();
+    }
+}
+
+function clearAmount() {
+    triggerHaptic(10);
+    const amountInput = document.getElementById('paymentAmount');
+    if (amountInput) {
+        amountInput.value = '';
         amountInput.focus();
+        toggleClearBtn();
+    }
+}
+
+function toggleClearBtn() {
+    const amountInput = document.getElementById('paymentAmount');
+    const clearBtn = document.getElementById('clearAmountBtn');
+    if (amountInput && clearBtn) {
+        if (amountInput.value && parseFloat(amountInput.value) > 0) {
+            clearBtn.classList.remove('hidden');
+        } else {
+            clearBtn.classList.add('hidden');
+        }
     }
 }
 
 // Amount Visibility Toggle
 function toggleAmountVisibility() {
+    triggerHaptic(15);
     isAmountVisible = !isAmountVisible;
     const amountEl = document.getElementById('displayAmount');
     const eyeIcon = document.getElementById('amountEyeIcon');
@@ -222,20 +325,22 @@ function toggleAmountVisibility() {
     }
 }
 
-// QR Code Logic
+// QR Code Generation Logic
 function generateQRCode() {
+    triggerHaptic(30);
     const inputVal = document.getElementById('paymentAmount').value;
     const amount = parseFloat(inputVal);
 
     if (isNaN(amount) || amount <= 0) {
-        alert('Please enter a valid payment amount greater than 0.');
+        showToast('Please enter a valid amount (greater than ₹0)', 'alert-circle');
+        document.getElementById('paymentAmount').focus();
         return;
     }
 
     currentAmount = amount;
     const formattedAmount = amount.toFixed(2);
 
-    // Standard NPCI compliant UPI URI with fixed amount parameters
+    // Standard NPCI compliant UPI URI
     const pa = encodeURIComponent(merchantConfig.vpa);
     const pn = encodeURIComponent(merchantConfig.name);
     const am = encodeURIComponent(formattedAmount);
@@ -246,12 +351,12 @@ function generateQRCode() {
     if (qrContainer) {
         qrContainer.innerHTML = '';
 
-        // Generate high quality scannable QR Code
+        // Generate clean high-resolution QR
         new QRCode(qrContainer, {
             text: generatedPaymentUri,
-            width: 220,
-            height: 220,
-            colorDark: '#0f172a',
+            width: 230,
+            height: 230,
+            colorDark: '#090e17',
             colorLight: '#ffffff',
             correctLevel: QRCode.CorrectLevel.H
         });
@@ -263,13 +368,17 @@ function generateQRCode() {
     if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye');
 
     document.getElementById('amountInputSection').classList.add('hidden');
-    document.getElementById('qrDisplaySection').classList.remove('hidden');
-    document.getElementById('qrDisplaySection').classList.add('fade-in');
+    const qrDisplay = document.getElementById('qrDisplaySection');
+    qrDisplay.classList.remove('hidden');
+    qrDisplay.classList.add('animate-pop-in');
 
     if (window.lucide) lucide.createIcons();
+    showToast(`QR Code generated for ₹${formattedAmount}`, 'qr-code');
 }
 
+// Download QR Code as PNG
 function downloadQR() {
+    triggerHaptic(20);
     const img = document.querySelector('#qrcode img');
     const canvas = document.querySelector('#qrcode canvas');
 
@@ -281,22 +390,64 @@ function downloadQR() {
     }
 
     if (!dataUrl) {
-        alert('QR code image unavailable for download.');
+        showToast('QR Code not ready for download', 'alert-circle');
         return;
     }
 
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = `QuickPay-QR-₹${currentAmount.toFixed(2)}.png`;
+    link.download = `QuickPay-₹${currentAmount.toFixed(2)}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    showToast('QR Code saved to gallery/downloads!', 'check');
 }
 
+// Share QR Code / Payment via Web Share API
+function sharePayment() {
+    triggerHaptic(20);
+    const shareText = `Pay ₹${currentAmount.toFixed(2)} to ${merchantConfig.name} via UPI:\n${generatedPaymentUri}`;
+
+    if (navigator.share) {
+        navigator.share({
+            title: `Payment to ${merchantConfig.name}`,
+            text: shareText,
+            url: generatedPaymentUri
+        }).then(() => {
+            showToast('Shared successfully!', 'share-2');
+        }).catch((err) => {
+            if (err.name !== 'AbortError') {
+                copyPaymentLink();
+            }
+        });
+    } else {
+        copyPaymentLink();
+    }
+}
+
+function copyPaymentLink() {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(generatedPaymentUri).then(() => {
+            showToast('Payment link copied to clipboard!', 'link');
+        });
+    }
+}
+
+// Reset Back to Input View
 function resetQR() {
-    document.getElementById('paymentAmount').value = '';
-    document.getElementById('qrDisplaySection').classList.add('hidden');
-    document.getElementById('amountInputSection').classList.remove('hidden');
-    document.getElementById('amountInputSection').classList.add('fade-in');
+    triggerHaptic(15);
+    const amountInput = document.getElementById('paymentAmount');
+    amountInput.value = '';
+    toggleClearBtn();
+
+    const qrDisplay = document.getElementById('qrDisplaySection');
+    qrDisplay.classList.add('hidden');
+    qrDisplay.classList.remove('animate-pop-in');
+
+    const inputSection = document.getElementById('amountInputSection');
+    inputSection.classList.remove('hidden');
+    inputSection.classList.add('animate-pop-in');
+
     document.getElementById('qrcode').innerHTML = '';
+    amountInput.focus();
 }

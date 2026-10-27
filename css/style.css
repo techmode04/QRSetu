@@ -1,15 +1,39 @@
 /* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
 
-/* Base Styles */
+:root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+}
+
 * {
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    scroll-behavior: smooth;
+    height: 100%;
 }
 
 body {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    transition: background-color 0.2s ease, color 0.2s ease;
-    -webkit-tap-highlight-color: transparent;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100%;
+    padding-top: var(--sat);
+    padding-bottom: var(--sab);
+    padding-left: var(--sal);
+    padding-right: var(--sar);
+    transition: background-color 0.25s ease, color 0.25s ease;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Allow text selection for inputs and IDs */
+input, textarea, .selectable-text {
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 /* Hide spin buttons for numeric inputs */
@@ -23,42 +47,81 @@ input[type=number] {
     -moz-appearance: textfield;
 }
 
-/* Custom transitions and animations */
-.fade-in {
-    animation: fadeIn 0.25s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from {
+/* Custom animations */
+@keyframes popIn {
+    0% {
         opacity: 0;
-        transform: translateY(6px);
+        transform: scale(0.96) translateY(8px);
     }
-    to {
+    100% {
         opacity: 1;
-        transform: translateY(0);
+        transform: scale(1) translateY(0);
     }
 }
 
-/* PWA Install Banner styling */
-#iosInstallBanner {
-    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+.animate-pop-in {
+    animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes slideUp {
-    from {
+@keyframes toastSlide {
+    0% {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translate(-50%, 20px) scale(0.95);
     }
-    to {
+    100% {
         opacity: 1;
-        transform: translateY(0);
+        transform: translate(-50%, 0) scale(1);
     }
 }
 
-/* QR Code Container Styling */
+.animate-toast {
+    animation: toastSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* QR Code Display Area */
+#qrcode {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 #qrcode img, #qrcode canvas {
+    display: block;
     margin: 0 auto;
-    border-radius: 0.75rem;
-    max-width: 100%;
-    height: auto;
+    border-radius: 14px;
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+/* Quick Chip Active Animation */
+.quick-chip {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quick-chip:active {
+    transform: scale(0.94);
+}
+
+/* Action button tactile press effect */
+.btn-press {
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease;
+}
+
+.btn-press:active {
+    transform: scale(0.97);
+}
+
+/* Monospace font utility for UPI ID */
+.font-mono-code {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Modern Card Glow Effect */
+.card-glow {
+    box-shadow: 0 10px 30px -10px rgba(79, 70, 229, 0.12);
+}
+
+.dark .card-glow {
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
