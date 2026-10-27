@@ -1,4 +1,4 @@
-// QuickPay Application Logic - Public Multi-User Version
+// QRSetu Application Logic - Robust UPI & Multi-User Support
 
 // Default Configuration (Clean & Neutral for Public Deployment)
 const DEFAULT_CONFIG = {
@@ -24,12 +24,16 @@ window.addEventListener('load', () => {
         lucide.createIcons();
     }
 
-    // First time onboarding check: if no UPI ID is saved, welcome user and open setup modal
+    // First-time onboarding check: if no UPI ID is saved, open setup modal gracefully
     const saved = localStorage.getItem('qp_merchant_settings');
     if (!saved || !merchantConfig.vpa) {
         setTimeout(() => {
-            openSettingsModal(true);
-        }, 500);
+            const modal = document.getElementById('settingsModal');
+            // Only open if not already open
+            if (modal && modal.classList.contains('hidden')) {
+                openSettingsModal(true);
+            }
+        }, 400);
     }
 });
 
@@ -74,13 +78,15 @@ function showToast(message, iconName = 'check-circle') {
 // Register Service Worker for PWA
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => {
-                console.log('ServiceWorker registered with scope:', reg.scope);
-            })
-            .catch(err => {
-                console.warn('ServiceWorker registration error:', err);
-            });
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => {
+                    console.log('QRSetu ServiceWorker registered:', reg.scope);
+                })
+                .catch(err => {
+                    console.warn('ServiceWorker registration error:', err);
+                });
+        });
     }
 }
 
@@ -99,7 +105,7 @@ function initPWA() {
         deferredPrompt = null;
         const installBtn = document.getElementById('pwaInstallBtn');
         if (installBtn) installBtn.classList.add('hidden');
-        showToast('QuickPay installed on your phone!', 'smartphone');
+        showToast('QRSetu installed on your phone!', 'smartphone');
     });
 
     // iOS Safari Detection
@@ -120,7 +126,7 @@ function triggerPWAInstall() {
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
-                showToast('Installing QuickPay...', 'download');
+                showToast('Installing QRSetu...', 'download');
             }
             deferredPrompt = null;
             const installBtn = document.getElementById('pwaInstallBtn');
@@ -269,20 +275,97 @@ function fallbackCopy(text) {
     document.body.removeChild(textArea);
 }
 
+// Robust UPI Parser & Validator
+function parseAndValidateUpi(rawInput) {
+    if (!rawInput || typeof rawInput !== 'string') {
+        return { valid: false, error: 'Please enter your UPI ID.' };
+    }
+
+    let cleaned = rawInput.trim();
+
+    // Case 1: Pasted UPI link (e.g. upi://pay?pa=user@bank&...)
+    if (cleaned.includes('pa=')) {
+        const match = cleaned.match(/pa=([^&]+)/i);
+        if (match && match[1]) {
+            cleaned = decodeURIComponent(match[1]).trim();
+        }
+    }
+
+    // Case 2: Pasted text like "UPI ID: xxx@yyy" or "VPA: xxx@yyy"
+    cleaned = cleaned.replace(/^(upi\s*id|vpa|upi)\s*[:=-]\s*/i, '');
+
+    // Case 3: Accidental spaces anywhere (e.g. "user@ okaxis" or "98765 43210")
+    cleaned = cleaned.replace(/\s+/g, '');
+
+    // Case 4: Strip leading "+91" or "0" if user pasted Indian mobile number
+    if (/^\+91[6-9]\d{9}$/.test(cleaned)) {
+        cleaned = cleaned.replace(/^\+91/, '');
+    } else if (/^0[6-9]\d{9}$/.test(cleaned)) {
+        cleaned = cleaned.replace(/^0/, '');
+    }
+
+    // Check 1: Standard Indian UPI VPA (e.g. user@bank, 9876543210@paytm, name.surname@okhdfcbank)
+    const vpaPattern = /^[a-zA-Z0-9.\-_]{2,64}@[a-zA-Z0-9]{2,32}$/;
+    if (vpaPattern.test(cleaned)) {
+        return { valid: true, upi: cleaned.toLowerCase() };
+    }
+
+    // Check 2: Indian 8 to 12 digit UPI Number (NPCI officially allows numeric UPI ID)
+    const numericPattern = /^[0-9]{8,12}$/;
+    if (numericPattern.test(cleaned)) {
+        return { valid: true, upi: cleaned };
+    }
+
+    // Check 3: If it contains '@' and has valid characters on both sides
+    if (cleaned.includes('@')) {
+        const parts = cleaned.split('@');
+        if (parts.length === 2 && parts[0].length > 0 && parts[1].length > 0) {
+            const cleanUser = parts[0].replace(/[^a-zA-Z0-9.\-_]/g, '');
+            const cleanHandle = parts[1].replace(/[^a-zA-Z0-9]/g, '');
+            if (cleanUser && cleanHandle) {
+                return { valid: true, upi: `${cleanUser}@${cleanHandle}`.toLowerCase() };
+            }
+        }
+    }
+
+    return {
+        valid: false,
+        error: 'Please enter a valid UPI ID (e.g. mobile@ybl, name@okhdfcbank or 10-digit UPI number)'
+    };
+}
+
+// Quick Bank Handle Chip Appender
+function appendUpiHandle(handle) {
+    triggerHaptic(10);
+    const upiInput = document.getElementById('settingUpiId');
+    if (!upiInput) return;
+
+    let currentVal = upiInput.value.trim().replace(/\s+/g, '');
+    if (currentVal.includes('@')) {
+        currentVal = currentVal.split('@')[0];
+    }
+
+    upiInput.value = currentVal + handle;
+    upiInput.focus();
+}
+
 function openSettingsModal(isFirstTime = false) {
     triggerHaptic(15);
-    document.getElementById('settingUpiId').value = merchantConfig.vpa || '';
-    document.getElementById('settingMerchantName').value = merchantConfig.name || '';
+    const upiInput = document.getElementById('settingUpiId');
+    const nameInput = document.getElementById('settingMerchantName');
+
+    if (upiInput) upiInput.value = merchantConfig.vpa || '';
+    if (nameInput) nameInput.value = merchantConfig.name || '';
 
     const modalTitle = document.getElementById('settingsModalTitle');
     const modalSubtitle = document.getElementById('settingsModalSubtitle');
 
     if (isFirstTime || !merchantConfig.vpa) {
-        if (modalTitle) modalTitle.textContent = 'Welcome! Setup Your UPI';
-        if (modalSubtitle) modalSubtitle.textContent = 'Enter your own Shop Name & UPI ID to start receiving payments directly to your account.';
+        if (modalTitle) modalTitle.textContent = 'Welcome! Setup QRSetu';
+        if (modalSubtitle) modalSubtitle.textContent = 'Enter your UPI ID to start accepting payments directly into your bank account.';
     } else {
         if (modalTitle) modalTitle.textContent = 'Merchant Settings';
-        if (modalSubtitle) modalSubtitle.textContent = 'Edit your receiver details anytime. Payments go directly to your account.';
+        if (modalSubtitle) modalSubtitle.textContent = 'Update your UPI ID or Business Name anytime.';
     }
 
     const modal = document.getElementById('settingsModal');
@@ -290,8 +373,8 @@ function openSettingsModal(isFirstTime = false) {
         modal.classList.remove('hidden');
         if (window.lucide) lucide.createIcons();
         setTimeout(() => {
-            const inputTarget = merchantConfig.name ? document.getElementById('settingUpiId') : document.getElementById('settingMerchantName');
-            if (inputTarget) inputTarget.focus();
+            // Focus UPI ID field directly since it's the required field!
+            if (upiInput) upiInput.focus();
         }, 150);
     }
 }
@@ -304,22 +387,38 @@ function closeSettingsModal() {
 
 function saveSettings() {
     triggerHaptic(25);
-    const upiId = document.getElementById('settingUpiId').value.trim();
-    const merchantName = document.getElementById('settingMerchantName').value.trim();
+    let upiVal = document.getElementById('settingUpiId') ? document.getElementById('settingUpiId').value : '';
+    let nameVal = document.getElementById('settingMerchantName') ? document.getElementById('settingMerchantName').value : '';
 
-    if (!upiId || !upiId.includes('@')) {
-        showToast('Please enter a valid UPI ID (e.g. name@okhdfcbank or 9876543210@paytm)', 'alert-circle');
-        document.getElementById('settingUpiId').focus();
+    upiVal = upiVal ? upiVal.trim() : '';
+    nameVal = nameVal ? nameVal.trim() : '';
+
+    // Smart Auto-Swap: If user accidentally typed UPI in the Name field and Name in the UPI field
+    if (nameVal.includes('@') && (!upiVal || !upiVal.includes('@'))) {
+        const temp = upiVal;
+        upiVal = nameVal;
+        nameVal = temp;
+        // Update input fields to reflect the smart swap
+        if (document.getElementById('settingUpiId')) document.getElementById('settingUpiId').value = upiVal;
+        if (document.getElementById('settingMerchantName')) document.getElementById('settingMerchantName').value = nameVal;
+    }
+
+    // Validate UPI
+    const validationResult = parseAndValidateUpi(upiVal);
+    if (!validationResult.valid) {
+        showToast(validationResult.error, 'alert-circle');
+        const upiInput = document.getElementById('settingUpiId');
+        if (upiInput) upiInput.focus();
         return;
     }
 
-    merchantConfig.vpa = upiId;
-    merchantConfig.name = merchantName || 'QuickPay Merchant';
+    merchantConfig.vpa = validationResult.upi;
+    merchantConfig.name = nameVal || 'QRSetu Merchant';
 
     localStorage.setItem('qp_merchant_settings', JSON.stringify(merchantConfig));
     updateMerchantUI();
     closeSettingsModal();
-    showToast('Your details saved successfully!', 'check-check');
+    showToast('UPI ID saved successfully!', 'check-check');
 }
 
 // Reset Stored Details
@@ -389,8 +488,8 @@ function generateQRCode() {
     triggerHaptic(30);
 
     // Validate if user has configured their UPI ID first
-    if (!merchantConfig.vpa || !merchantConfig.vpa.includes('@')) {
-        showToast('Please set your own UPI ID first!', 'alert-circle');
+    if (!merchantConfig.vpa) {
+        showToast('Please set your UPI ID first!', 'alert-circle');
         openSettingsModal(true);
         return;
     }
@@ -399,7 +498,7 @@ function generateQRCode() {
     const amount = parseFloat(inputVal);
 
     if (isNaN(amount) || amount <= 0) {
-        showToast('Please enter a payment amount greater than ₹0', 'alert-circle');
+        showToast('Please enter an amount greater than ₹0', 'alert-circle');
         document.getElementById('paymentAmount').focus();
         return;
     }
@@ -407,7 +506,7 @@ function generateQRCode() {
     currentAmount = amount;
     const formattedAmount = amount.toFixed(2);
 
-    // Standard NPCI compliant UPI URI with user's customized details
+    // Standard NPCI compliant UPI URI
     const pa = encodeURIComponent(merchantConfig.vpa);
     const pn = encodeURIComponent(merchantConfig.name || 'Merchant');
     const am = encodeURIComponent(formattedAmount);
@@ -461,10 +560,10 @@ function downloadQR() {
         return;
     }
 
-    const safeName = (merchantConfig.name || 'QuickPay').replace(/[^a-zA-Z0-9]/g, '-');
+    const safeName = (merchantConfig.name || 'QRSetu').replace(/[^a-zA-Z0-9]/g, '-');
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = `${safeName}-₹${currentAmount.toFixed(2)}.png`;
+    link.download = `QRSetu-${safeName}-₹${currentAmount.toFixed(2)}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

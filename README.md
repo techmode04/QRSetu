@@ -1,14 +1,14 @@
-# 💳 QuickPay - Simple UPI Payments (PWA)
+# 💳 QRSetu - Simple UPI Payments (PWA)
 
 A fast, lightweight, and modern Progressive Web App (PWA) to generate dynamic UPI QR codes with custom amounts for Indian businesses, shopkeepers, freelancers, and individuals.
 
-![QuickPay Logo](logo.png)
+![QRSetu Logo](logo.png)
 
 ---
 
 ## 🌟 100% Public & Multi-User Ready
 
-QuickPay is designed to be **publicly shared and installed by anyone**:
+QRSetu is designed to be **publicly shared and installed by anyone**:
 - 🔒 **Client-Side & Private**: Every user sets their **own UPI ID** and **Shop / Business Name**.
 - 💾 **Local Storage**: User details are saved securely on their own device (`localStorage`). No backend or database required.
 - 👋 **Automatic Onboarding**: First-time visitors are welcomed with a setup popup to enter their UPI ID and shop name.
@@ -59,7 +59,7 @@ Quick-Pay/
 1. Open the website URL in **Safari**.
 2. Tap the **Share** button (box with an arrow pointing up) at the bottom toolbar.
 3. Scroll down and tap **"Add to Home Screen"** (`होम स्क्रीन पर जोड़ें`).
-4. Tap **Add**. The QuickPay app will be installed with `logo.png` as its icon.
+4. Tap **Add**. The QRSetu app will be installed with `logo.png` as its icon.
 
 ---
 
@@ -67,20 +67,20 @@ Quick-Pay/
 
 ### 1. Initialize Git and Commit
 
-Open PowerShell or Terminal inside the `Quick-Pay` folder and run:
+Open PowerShell or Terminal inside the project folder and run:
 
 ```bash
 git add .
-git commit -m "Make QuickPay public and multi-user friendly"
+git commit -m "Rename to QRSetu and enhance UPI validation"
 git branch -M main
 ```
 
 ### 2. Connect to your GitHub Repository
 
-Create a new repository on [GitHub](https://github.com/new) (e.g. `quick-pay`), then run:
+Create a new repository on [GitHub](https://github.com/new) (e.g. `qrsetu`), then run:
 
 ```bash
-git remote add origin https://github.com/<YOUR-USERNAME>/quick-pay.git
+git remote add origin https://github.com/<YOUR-USERNAME>/qrsetu.git
 git push -u origin main
 ```
 
@@ -91,7 +91,7 @@ git push -u origin main
 3. Under **Build and deployment** > **Branch**, select `main` and root `/ (root)`.
 4. Click **Save**.
 5. Within 1-2 minutes, your live site will be ready at:
-   `https://<YOUR-USERNAME>.github.io/quick-pay/`
+   `https://<YOUR-USERNAME>.github.io/qrsetu/`
 
 Anyone who opens this link can install it and use it with their own UPI ID!
 
