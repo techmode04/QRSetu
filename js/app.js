@@ -544,6 +544,9 @@ function generateQRCode() {
     qrDisplay.classList.remove('hidden');
     qrDisplay.classList.add('animate-pop-in');
 
+    // Start 5-Minute Expiry Countdown Timer
+    startQRTimer();
+
     if (window.lucide) lucide.createIcons();
     showToast(`QR Code generated for ₹${formattedAmount}`, 'qr-code');
 }
@@ -732,6 +735,8 @@ function copyPaymentLink() {
 // Reset Back to Input View
 function resetQR() {
     triggerHaptic(15);
+    stopQRTimer();
+
     const amountInput = document.getElementById('paymentAmount');
     amountInput.value = '';
     toggleClearBtn();
@@ -747,7 +752,15 @@ function resetQR() {
     inputSection.classList.remove('hidden');
     inputSection.classList.add('animate-pop-in');
 
-    document.getElementById('qrcode').innerHTML = '';
+    // Reset QR container & expired overlay
+    const overlay = document.getElementById('qrExpiredOverlay');
+    const qrBox = document.getElementById('qrcode');
+    if (overlay) overlay.classList.add('hidden');
+    if (qrBox) {
+        qrBox.classList.remove('opacity-20', 'blur-sm', 'pointer-events-none');
+        qrBox.innerHTML = '';
+    }
+
     amountInput.focus();
 }
 
@@ -903,4 +916,420 @@ function applyCalcToAmount() {
         amtInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
         showToast(`Total ₹${finalVal.toFixed(2)} applied to QR!`, 'check');
     }
+}
+
+// ==========================================
+// 5-Minute Live Countdown Timer Engine
+// ==========================================
+let qrTimerInterval = null;
+let qrTimeLeft = 300; // 5 minutes = 300 seconds
+const QR_TOTAL_SECONDS = 300;
+
+function startQRTimer() {
+    stopQRTimer();
+    qrTimeLeft = QR_TOTAL_SECONDS;
+    updateTimerDisplay();
+
+    // Ensure expired overlay is hidden and QR is active
+    const overlay = document.getElementById('qrExpiredOverlay');
+    const qrBox = document.getElementById('qrcode');
+    if (overlay) overlay.classList.add('hidden');
+    if (qrBox) {
+        qrBox.classList.remove('opacity-20', 'blur-sm', 'pointer-events-none');
+    }
+
+    qrTimerInterval = setInterval(() => {
+        qrTimeLeft--;
+        updateTimerDisplay();
+
+        if (qrTimeLeft <= 0) {
+            stopQRTimer();
+            expireQR();
+        }
+    }, 1000);
+}
+
+function stopQRTimer() {
+    if (qrTimerInterval) {
+        clearInterval(qrTimerInterval);
+        qrTimerInterval = null;
+    }
+}
+
+function updateTimerDisplay() {
+    const timerText = document.getElementById('qrTimer');
+    const progressBar = document.getElementById('qrTimerProgressBar');
+
+    const mins = Math.floor(Math.max(0, qrTimeLeft) / 60);
+    const secs = Math.max(0, qrTimeLeft) % 60;
+    const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    if (timerText) {
+        timerText.textContent = formatted;
+        const parentPill = timerText.closest('span');
+        if (parentPill) {
+            if (qrTimeLeft < 60) {
+                parentPill.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60';
+            } else {
+                parentPill.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60';
+            }
+        }
+    }
+
+    if (progressBar) {
+        const pct = Math.max(0, (qrTimeLeft / QR_TOTAL_SECONDS) * 100);
+        progressBar.style.width = `${pct}%`;
+        if (qrTimeLeft < 60) {
+            progressBar.className = 'h-full bg-rose-500 rounded-full transition-all duration-1000';
+        } else {
+            progressBar.className = 'h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-1000';
+        }
+    }
+}
+
+function expireQR() {
+    triggerHaptic([30, 50, 30]);
+    const overlay = document.getElementById('qrExpiredOverlay');
+    const qrBox = document.getElementById('qrcode');
+
+    if (overlay) overlay.classList.remove('hidden');
+    if (qrBox) {
+        qrBox.classList.add('opacity-20', 'blur-sm', 'pointer-events-none');
+    }
+    if (window.lucide) lucide.createIcons();
+    showToast('QR Code expired (5 mins). Tap Regenerate.', 'alert-triangle');
+}
+
+function regenerateExpiredQR() {
+    triggerHaptic(20);
+    generateQRCode();
+}
+
+// ==========================================
+// Payment Confirmation, Soundbox & Receipt
+// ==========================================
+let currentReceiptData = null;
+
+function confirmPaymentReceived() {
+    triggerHaptic(40);
+    stopQRTimer();
+
+    const formattedAmount = currentAmount.toFixed(2);
+    const shopName = merchantConfig.name || 'Merchant';
+    const upiId = merchantConfig.vpa || 'merchant@upi';
+
+    // Format current live date and time
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+    const timeFormatted = now.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+    const fullDateTime = `${dateFormatted}, ${timeFormatted}`;
+
+    // Generate standard 12-digit UPI UTR reference number
+    const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
+    const utrNumber = `UPI/43${randomDigits}`;
+
+    currentReceiptData = {
+        amount: formattedAmount,
+        shopName: shopName,
+        upiId: upiId,
+        dateTime: fullDateTime,
+        utr: utrNumber
+    };
+
+    // Update modal displays
+    const amtEl = document.getElementById('successAmountDisplay');
+    const shopEl = document.getElementById('successMerchantDisplay');
+    const upiEl = document.getElementById('successUpiDisplay');
+    const timeEl = document.getElementById('successTimeDisplay');
+    const utrEl = document.getElementById('successUtrDisplay');
+
+    if (amtEl) amtEl.textContent = `₹ ${formattedAmount}`;
+    if (shopEl) shopEl.textContent = `Paid to ${shopName}`;
+    if (upiEl) upiEl.textContent = upiId;
+    if (timeEl) timeEl.textContent = fullDateTime;
+    if (utrEl) utrEl.textContent = utrNumber;
+
+    // Trigger Soundbox chime & voice announcement
+    playSoundboxChime(Math.round(currentAmount));
+
+    // Show Payment Success Modal
+    const modal = document.getElementById('paymentSuccessModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
+function closeSuccessAndNewPayment() {
+    triggerHaptic(15);
+    const modal = document.getElementById('paymentSuccessModal');
+    if (modal) modal.classList.add('hidden');
+    resetQR();
+}
+
+// Number to Hindi Words Converter for Pure Hindi Soundbox Announcement
+function numberToHindiWords(num) {
+    num = Math.floor(num);
+    if (num <= 0) return 'शून्य';
+
+    const ones = [
+        '', 'एक', 'दो', 'तीन', 'चार', 'पाँच', 'छह', 'सात', 'आठ', 'नौ', 'दस',
+        'ग्यारह', 'बारह', 'तेरह', 'चौदह', 'पंद्रह', 'सोलह', 'सत्रह', 'अठारह', 'उन्नीस', 'बीस',
+        'इक्कीस', 'बाईस', 'तेईस', 'चौबीस', 'पच्चीस', 'छब्बीस', 'सत्ताईस', 'अट्ठाइस', 'उनतीस', 'तीस',
+        'इकत्तीस', 'बत्तीस', 'तैंतीस', 'चौंतीस', 'पैंतीस', 'छत्तीस', 'सैंतीस', 'अड़तीस', 'उनतालीस', 'चालीस',
+        'इकतालीस', 'बयालीस', 'तैंतालीस', 'चवालीस', 'पैंतालीस', 'छियालीस', 'सैंतालीस', 'अड़तालीस', 'उनचास', 'पचास',
+        'इक्यावन', 'बावन', 'तिरेपन', 'चौवन', 'पचपन', 'छप्पन', 'सत्तावन', 'अट्ठावन', 'उनसठ', 'साठ',
+        'इकसठ', 'बासठ', 'तिरेसठ', 'चौंसठ', 'पैंसठ', 'छियासठ', 'सरसठ', 'अड़सठ', 'उनहत्तर', 'सत्तर',
+        'इकहत्तर', 'बहत्तर', 'तिहत्तर', 'चौहत्तर', 'पचहत्तर', 'छिहत्तर', 'सतहत्तर', 'अठहत्तर', 'उनासी', 'अस्सी',
+        'इक्यासी', 'बयासी', 'तिरासी', 'चौरासी', 'पचासी', 'छियासी', 'सत्तासी', 'अट्ठासी', 'नवासी', 'नब्बे',
+        'इक्यानवे', 'बानवे', 'तिरानवे', 'चौरानवे', 'पंचानवे', 'छियानवे', 'सत्तानवे', 'अट्ठानवे', 'निन्यानवे'
+    ];
+
+    function convertBelowThousand(n) {
+        let res = '';
+        if (n >= 100) {
+            const h = Math.floor(n / 100);
+            res += (ones[h] || '') + ' सौ ';
+            n %= 100;
+        }
+        if (n > 0) {
+            res += (ones[n] || '');
+        }
+        return res.trim();
+    }
+
+    let words = '';
+
+    // Crores
+    if (num >= 10000000) {
+        const cr = Math.floor(num / 10000000);
+        words += convertBelowThousand(cr) + ' करोड़ ';
+        num %= 10000000;
+    }
+    // Lakhs
+    if (num >= 100000) {
+        const lk = Math.floor(num / 100000);
+        words += (ones[lk] || convertBelowThousand(lk)) + ' लाख ';
+        num %= 100000;
+    }
+    // Thousands
+    if (num >= 1000) {
+        const th = Math.floor(num / 1000);
+        words += (ones[th] || convertBelowThousand(th)) + ' हज़ार ';
+        num %= 1000;
+    }
+    // Below 1000
+    if (num > 0) {
+        words += convertBelowThousand(num);
+    }
+
+    return words.trim() || String(num);
+}
+
+// Soundbox Chime (Web Audio API) + Pure Hindi Voice Announcement
+function playSoundboxChime(amount) {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+            const ctx = new AudioContext();
+            const now = ctx.currentTime;
+
+            // Tone 1: 587.33Hz (D5) bell tone
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(587.33, now);
+            gain1.gain.setValueAtTime(0.3, now);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start(now);
+            osc1.stop(now + 0.35);
+
+            // Tone 2: 880Hz (A5) high chime tone
+            const osc2 = ctx.createOscillator();
+            const gain2 = ctx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(880, now + 0.16);
+            gain2.gain.setValueAtTime(0.35, now + 0.16);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+            osc2.connect(gain2);
+            gain2.connect(ctx.destination);
+            osc2.start(now + 0.16);
+            osc2.stop(now + 0.65);
+        }
+    } catch (e) {
+        console.log('AudioContext not supported');
+    }
+
+    // Pure Hindi Voice Announcement: "क्यूआर सेतु पर [संख्या] रुपये प्राप्त हुए"
+    try {
+        if ('speechSynthesis' in window) {
+            // Cancel any ongoing speech first
+            window.speechSynthesis.cancel();
+
+            setTimeout(() => {
+                const numericAmt = Math.round(amount);
+                const hindiWords = numberToHindiWords(numericAmt);
+                const speechText = `क्यूआर सेतु पर ${hindiWords} रुपये प्राप्त हुए`;
+
+                const utterance = new SpeechSynthesisUtterance(speechText);
+                utterance.lang = 'hi-IN'; // Explicit Hindi (India) language
+                utterance.rate = 0.88;    // Natural soundbox cadence
+                utterance.pitch = 1.0;
+
+                // Pick native Hindi voice if available
+                const voices = window.speechSynthesis.getVoices();
+                const hiVoice = voices.find(v => v.lang === 'hi-IN' || (v.lang && v.lang.startsWith('hi')) || (v.name && v.name.toLowerCase().includes('hindi')));
+                if (hiVoice) {
+                    utterance.voice = hiVoice;
+                }
+
+                window.speechSynthesis.speak(utterance);
+            }, 380);
+        }
+    } catch (e) {
+        console.log('Speech synthesis unavailable');
+    }
+}
+
+// Download Payment Receipt as Image
+function downloadReceipt() {
+    triggerHaptic(20);
+    if (!currentReceiptData) {
+        showToast('Receipt details unavailable', 'alert-circle');
+        return;
+    }
+
+    const W = 620;
+    const H = 760;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // 1. Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. Top Header Accent
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, '#059669');
+    grad.addColorStop(1, '#0d9488');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, 100);
+
+    // Title
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 28px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('QRSetu - PAYMENT RECEIPT', W / 2, 50);
+
+    ctx.fillStyle = '#d1fae5';
+    ctx.font = '15px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.fillText('Instant UPI Payment Completed', W / 2, 78);
+
+    // 3. Amount Section
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '900 44px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.fillText(`₹ ${currentReceiptData.amount}`, W / 2, 175);
+
+    ctx.fillStyle = '#059669';
+    ctx.font = 'bold 16px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.fillText('✓ Payment Successful', W / 2, 210);
+
+    // 4. Receipt Details Box
+    const boxX = 40;
+    const boxY = 245;
+    const boxW = W - 80;
+    const boxH = 340;
+
+    ctx.fillStyle = '#f8fafc';
+    roundRect(ctx, boxX, boxY, boxW, boxH, 18);
+    ctx.fill();
+
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, boxX, boxY, boxW, boxH, 18);
+    ctx.stroke();
+
+    // Details rows
+    const rows = [
+        ['Payment Method', 'UPI Instant Pay'],
+        ['Merchant / Shop', currentReceiptData.shopName],
+        ['UPI ID (VPA)', currentReceiptData.upiId],
+        ['Date & Time', currentReceiptData.dateTime],
+        ['UPI Ref / UTR', currentReceiptData.utr],
+        ['Status', 'Completed (0% Fee)']
+    ];
+
+    let rowY = boxY + 45;
+    ctx.font = '14px "Plus Jakarta Sans", Arial, sans-serif';
+
+    rows.forEach(([label, val], idx) => {
+        // Label
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, boxX + 25, rowY);
+
+        // Value
+        ctx.fillStyle = idx === 4 ? '#4f46e5' : '#0f172a';
+        ctx.font = idx === 4 ? 'bold 14px "JetBrains Mono", monospace' : 'bold 14px "Plus Jakarta Sans", Arial, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(val, boxX + boxW - 25, rowY);
+
+        if (idx < rows.length - 1) {
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(boxX + 25, rowY + 12);
+            ctx.lineTo(boxX + boxW - 25, rowY + 12);
+            ctx.stroke();
+        }
+
+        rowY += 48;
+    });
+
+    // 5. Footer Attribution
+    ctx.fillStyle = '#475569';
+    ctx.font = '600 16px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Developed by sachindhisle04', W / 2, 645);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '13px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.fillText('QRSetu - Verified UPI Transaction Terminal', W / 2, 675);
+
+    // Helper for rounded rectangles
+    function roundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.lineTo(x + w - r, y);
+        c.quadraticCurveTo(x + w, y, x + w, y + r);
+        c.lineTo(x + w, y + h - r);
+        c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        c.lineTo(x + r, y + h);
+        c.quadraticCurveTo(x, y + h, x, y + h - r);
+        c.lineTo(x, y + r);
+        c.quadraticCurveTo(x, y, x + r, y);
+        c.closePath();
+    }
+
+    // Trigger Download
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `Receipt-₹${currentReceiptData.amount}-${currentReceiptData.utr.replace('/', '-')}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Payment receipt downloaded!', 'check');
 }

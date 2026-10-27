@@ -214,20 +214,14 @@
             <!-- Quick Billing Calculator Card -->
             <div id="calculatorCard" class="bg-white dark:bg-slate-850 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm card-glow animate-pop-in">
                 <!-- Calculator Header -->
-                <div class="flex items-center justify-between mb-2.5 px-1">
-                    <div class="flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <i data-lucide="calculator" class="w-4 h-4"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Quick Bill Calculator</h3>
-                            <p class="text-[10px] text-slate-400 leading-none">Add items & send total to QR</p>
-                        </div>
+                <div class="flex items-center gap-2 mb-2.5 px-1">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                        <i data-lucide="calculator" class="w-4 h-4"></i>
                     </div>
-                    <button type="button" onclick="applyCalcToAmount()" class="px-2.5 py-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200/60 dark:border-indigo-800/50 rounded-lg flex items-center gap-1 btn-press" title="Set result as payment amount">
-                        <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
-                        <span>Apply to QR</span>
-                    </button>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Quick Bill Calculator</h3>
+                        <p class="text-[10px] text-slate-400 leading-none">Add items & send total to QR</p>
+                    </div>
                 </div>
 
                 <!-- Calculator Display Screen -->
@@ -276,12 +270,24 @@
         <!-- Section 2: Generated QR View (Initially Hidden) -->
         <div id="qrDisplaySection" class="hidden bg-white dark:bg-slate-850 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm text-center card-glow">
             
-            <!-- Amount & Privacy Header -->
+            <!-- Amount & Timer Header -->
             <div class="mb-3">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/60 mb-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Ready for Payment</span>
-                </span>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/60">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>Active</span>
+                    </span>
+
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/60">
+                        <i data-lucide="timer" class="w-3.5 h-3.5"></i>
+                        <span id="qrTimer">05:00</span>
+                    </span>
+                </div>
+
+                <!-- 5-Minute Timer Progress Bar -->
+                <div class="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full overflow-hidden mb-3">
+                    <div id="qrTimerProgressBar" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-1000" style="width: 100%;"></div>
+                </div>
                 
                 <div class="flex items-center justify-center gap-2">
                     <span id="displayAmount" class="text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">₹0.00</span>
@@ -291,9 +297,22 @@
                 </div>
             </div>
 
-            <!-- QR Container Frame -->
-            <div class="p-3 bg-white rounded-2xl border border-slate-200 dark:border-slate-700 shadow-inner inline-block my-1">
-                <div id="qrcode" class="flex justify-center items-center"></div>
+            <!-- QR Container Frame with Expired Overlay -->
+            <div class="relative p-3 bg-white rounded-2xl border border-slate-200 dark:border-slate-700 shadow-inner inline-block my-1">
+                <div id="qrcode" class="flex justify-center items-center transition-all duration-300"></div>
+
+                <!-- QR Expired Overlay -->
+                <div id="qrExpiredOverlay" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-xs rounded-2xl flex flex-col items-center justify-center p-4 text-white z-10 animate-pop-in">
+                    <div class="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mb-2">
+                        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                    </div>
+                    <p class="font-bold text-sm">QR Code Expired</p>
+                    <p class="text-[11px] text-slate-300 mb-3 text-center">5 minutes timeout reached</p>
+                    <button onclick="regenerateExpiredQR()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md btn-press">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Regenerate QR</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Recipient Subtitle -->
@@ -315,7 +334,16 @@
                 <span>Cred</span>
             </div>
 
-            <!-- Action Buttons -->
+            <!-- Primary Action: Payment Received (Soundbox & Success Receipt) -->
+            <button 
+                onclick="confirmPaymentReceived()" 
+                class="w-full py-3.5 mb-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 text-sm btn-press"
+            >
+                <i data-lucide="badge-check" class="w-5 h-5"></i>
+                <span>Payment Received (Done)</span>
+            </button>
+
+            <!-- Action Buttons Grid -->
             <div class="grid grid-cols-2 gap-2 mb-2">
                 <button 
                     onclick="downloadQR()" 
@@ -335,10 +363,10 @@
 
             <button 
                 onclick="resetQR()" 
-                class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 text-sm btn-press"
+                class="w-full py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 text-sm btn-press"
             >
                 <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                <span>Create New Payment</span>
+                <span>New Payment / नया पेमेंट</span>
             </button>
         </div>
 
@@ -457,6 +485,60 @@
     <div id="toastNotification" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white dark:bg-white dark:text-slate-900 px-4 py-2.5 rounded-full shadow-2xl border border-slate-700/50 dark:border-slate-200 flex items-center gap-2 text-xs font-semibold backdrop-blur-md">
         <i id="toastIcon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400 dark:text-emerald-600"></i>
         <span id="toastMessage">Notification</span>
+    </div>
+
+    <!-- Payment Success Modal / Digital Receipt -->
+    <div id="paymentSuccessModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 animate-pop-in">
+        <div class="bg-white dark:bg-slate-850 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 text-center relative overflow-hidden">
+            <!-- Decorative Glow Accent -->
+            <div class="absolute -top-10 -left-10 w-28 h-28 bg-emerald-500/15 rounded-full blur-xl pointer-events-none"></div>
+            <div class="absolute -top-10 -right-10 w-28 h-28 bg-indigo-500/15 rounded-full blur-xl pointer-events-none"></div>
+
+            <!-- Green Animated Checkmark Icon -->
+            <div class="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-500 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/20">
+                <i data-lucide="check-circle-2" class="w-9 h-9"></i>
+            </div>
+
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40 mb-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Payment Successful</span>
+            </span>
+
+            <h3 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight" id="successAmountDisplay">₹ 0.00</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" id="successMerchantDisplay">Paid to Merchant</p>
+
+            <!-- Receipt Breakdown Card -->
+            <div class="bg-slate-50 dark:bg-slate-925/80 rounded-2xl p-3.5 border border-slate-200 dark:border-slate-800 my-4 text-left space-y-2 text-xs">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">Payment Mode</span>
+                    <span class="font-bold text-slate-700 dark:text-slate-200">UPI Instant Pay</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">Paid To</span>
+                    <span class="font-mono-code text-[11px] font-semibold text-slate-600 dark:text-slate-300 truncate max-w-[170px]" id="successUpiDisplay">-</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-400">Date & Time</span>
+                    <span class="font-semibold text-slate-700 dark:text-slate-200" id="successTimeDisplay">-</span>
+                </div>
+                <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-800/60">
+                    <span class="text-slate-400">UPI Ref / UTR</span>
+                    <span class="font-mono-code text-[11px] font-bold text-indigo-600 dark:text-indigo-400" id="successUtrDisplay">-</span>
+                </div>
+            </div>
+
+            <!-- Modal Action Buttons -->
+            <div class="space-y-2">
+                <button onclick="downloadReceipt()" class="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 btn-press">
+                    <i data-lucide="download" class="w-4 h-4 text-indigo-500"></i>
+                    <span>Download Receipt (रसीद)</span>
+                </button>
+                <button onclick="closeSuccessAndNewPayment()" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl shadow-md shadow-indigo-600/25 text-sm flex items-center justify-center gap-2 btn-press">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>Next Payment / अगला ग्राहक</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Application Script -->
