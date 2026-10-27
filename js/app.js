@@ -736,6 +736,9 @@ function resetQR() {
     amountInput.value = '';
     toggleClearBtn();
 
+    // Reset Calculator so new payment starts with a clean slate
+    clearCalculator();
+
     const qrDisplay = document.getElementById('qrDisplaySection');
     qrDisplay.classList.add('hidden');
     qrDisplay.classList.remove('animate-pop-in');
@@ -754,6 +757,13 @@ function resetQR() {
 let calcExpression = '';
 let calcResult = '0';
 let isEvaluated = false;
+
+function clearCalculator() {
+    calcExpression = '';
+    calcResult = '0';
+    isEvaluated = false;
+    updateCalcDisplay();
+}
 
 function updateCalcDisplay() {
     const histEl = document.getElementById('calcHistory');
@@ -787,10 +797,7 @@ function calcInput(char) {
 function calcAction(action) {
     triggerHaptic(12);
     if (action === 'C') {
-        calcExpression = '';
-        calcResult = '0';
-        isEvaluated = false;
-        updateCalcDisplay();
+        clearCalculator();
         return;
     }
 

@@ -61,6 +61,38 @@ Quick-Pay/
 3. Scroll down and tap **"Add to Home Screen"** (`होम स्क्रीन पर जोड़ें`).
 4. Tap **Add**. The QRSetu app will be installed with `logo.png` as its icon.
 
+---
+
+## 🚀 How to Upload to GitHub and Host with GitHub Pages
+
+### 1. Initialize Git and Commit
+
+Open PowerShell or Terminal inside the project folder and run:
+
+```bash
+git add .
+git commit -m "Rename to QRSetu and enhance UPI validation"
+git branch -M main
+```
+
+### 2. Connect to your GitHub Repository
+
+Create a new repository on [GitHub](https://github.com/new) (e.g. `qrsetu`), then run:
+
+```bash
+git remote add origin https://github.com/<YOUR-USERNAME>/qrsetu.git
+git push -u origin main
+```
+
+### 3. Enable GitHub Pages (Free Live URL)
+
+1. Go to your repository on GitHub.
+2. Click on **Settings** > **Pages** (in the left sidebar).
+3. Under **Build and deployment** > **Branch**, select `main` and root `/ (root)`.
+4. Click **Save**.
+5. Within 1-2 minutes, your live site will be ready at:
+   `https://<YOUR-USERNAME>.github.io/qrsetu/`
+
 Anyone who opens this link can install it and use it with their own UPI ID!
 
 ---
