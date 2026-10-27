@@ -2,12 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#4f46e5">
     <meta name="description" content="QuickPay - Simple UPI Payments with dynamic QR code generation for Indian businesses.">
+
     <title>QuickPay - Simple UPI Payments</title>
 
-    <!-- Tailwind CSS -->
+    <!-- Web App Manifest (PWA) -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Icons for Android / Chrome / Windows -->
+    <link rel="icon" type="image/png" sizes="512x512" href="logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="logo-192.png">
+    <link rel="shortcut icon" href="logo.png">
+
+    <!-- iOS / Safari PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="QuickPay">
+    <link rel="apple-touch-icon" href="logo.png">
+
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -16,7 +32,7 @@
                 extend: {
                     colors: {
                         brand: {
-                            50: '#eep2ff',
+                            50: '#eef2ff',
                             500: '#6366f1',
                             600: '#4f46e5',
                             700: '#4338ca',
@@ -27,38 +43,23 @@
         }
     </script>
 
-    <!-- Lucide Icons -->
+    <!-- Lucide Icons Library -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- QRCode.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <!-- App Custom Styles -->
-    <style>
-        body {
-            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            transition: background-color 0.2s ease, color 0.2s ease;
-            -webkit-tap-highlight-color: transparent;
-        }
-        /* Hide spin buttons for numeric input */
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-gray-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col justify-between antialiased">
+<body class="bg-gray-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col justify-between antialiased selection:bg-indigo-500 selection:text-white">
 
     <!-- Top Navigation Header -->
     <header class="w-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-700 sticky top-0 z-40">
         <div class="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                    <i data-lucide="qr-code" class="w-5 h-5"></i>
+                <div class="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-indigo-500/20 flex-shrink-0">
+                    <img src="logo.png" alt="QuickPay Logo" class="w-full h-full object-cover">
                 </div>
                 <div>
                     <h1 class="font-bold text-lg leading-none tracking-tight">QuickPay</h1>
@@ -249,251 +250,7 @@
         </button>
     </div>
 
-    <!-- JavaScript Application Logic -->
-    <script>
-        // Default Merchant Configuration
-        const DEFAULT_CONFIG = {
-            vpa: 'dhislesachin04@ybl',
-            name: 'Dhisle Hardware And Traders'
-        };
-
-        // Global State Variables
-        let merchantConfig = { ...DEFAULT_CONFIG };
-        let generatedPaymentUri = '';
-        let currentAmount = 0;
-        let isAmountVisible = true;
-        let deferredPrompt = null;
-
-        // Initialize App
-        window.addEventListener('load', () => {
-            initTheme();
-            loadSettings();
-            initPWA();
-            lucide.createIcons();
-        });
-
-        // PWA Setup
-        function initPWA() {
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                const installBtn = document.getElementById('pwaInstallBtn');
-                if (installBtn) installBtn.classList.remove('hidden');
-            });
-
-            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-            
-            if (isIos && !isStandalone && !localStorage.getItem('qp_ios_banner_dismissed')) {
-                const iosBanner = document.getElementById('iosInstallBanner');
-                if (iosBanner) iosBanner.classList.remove('hidden');
-            }
-        }
-
-        function triggerPWAInstall() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then(() => {
-                    deferredPrompt = null;
-                    const installBtn = document.getElementById('pwaInstallBtn');
-                    if (installBtn) installBtn.classList.add('hidden');
-                });
-            }
-        }
-
-        function dismissIosBanner() {
-            localStorage.setItem('qp_ios_banner_dismissed', 'true');
-            const iosBanner = document.getElementById('iosInstallBanner');
-            if (iosBanner) iosBanner.classList.add('hidden');
-        }
-
-        // Theme Toggle (Light/Dark Mode)
-        function initTheme() {
-            const savedTheme = localStorage.getItem('qp_theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            
-            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-            updateThemeIcon();
-        }
-
-        function toggleDarkMode() {
-            document.documentElement.classList.toggle('dark');
-            const isDark = document.documentElement.classList.contains('dark');
-            localStorage.setItem('qp_theme', isDark ? 'dark' : 'light');
-            updateThemeIcon();
-        }
-
-        function updateThemeIcon() {
-            const isDark = document.documentElement.classList.contains('dark');
-            const themeIcon = document.getElementById('themeIcon');
-            if (themeIcon) {
-                themeIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
-                lucide.createIcons();
-            }
-        }
-
-        // Settings Handling
-        function loadSettings() {
-            const saved = localStorage.getItem('qp_merchant_settings');
-            if (saved) {
-                try {
-                    merchantConfig = JSON.parse(saved);
-                } catch (e) {
-                    merchantConfig = { ...DEFAULT_CONFIG };
-                }
-            } else {
-                merchantConfig = { ...DEFAULT_CONFIG };
-            }
-            updateMerchantUI();
-        }
-
-        function updateMerchantUI() {
-            document.getElementById('displayMerchantName').textContent = merchantConfig.name || DEFAULT_CONFIG.name;
-            document.getElementById('displayUpiId').textContent = merchantConfig.vpa || DEFAULT_CONFIG.vpa;
-            document.getElementById('qrShopName').textContent = merchantConfig.name || DEFAULT_CONFIG.name;
-            document.getElementById('qrUpiId').textContent = merchantConfig.vpa || DEFAULT_CONFIG.vpa;
-
-            // Reset image visibility check
-            const imgEl = document.getElementById('merchantLogoImg');
-            const fallbackEl = document.getElementById('merchantLogoFallback');
-            if (imgEl) imgEl.classList.remove('hidden');
-            if (fallbackEl) fallbackEl.classList.add('hidden');
-        }
-
-        function handleLogoError(img) {
-            img.classList.add('hidden');
-            const fallback = document.getElementById('merchantLogoFallback');
-            if (fallback) {
-                fallback.textContent = (merchantConfig.name || 'D').charAt(0).toUpperCase();
-                fallback.classList.remove('hidden');
-            }
-        }
-
-        function openSettingsModal() {
-            document.getElementById('settingUpiId').value = merchantConfig.vpa;
-            document.getElementById('settingMerchantName').value = merchantConfig.name;
-            document.getElementById('settingsModal').classList.remove('hidden');
-        }
-
-        function closeSettingsModal() {
-            document.getElementById('settingsModal').classList.add('hidden');
-        }
-
-        function saveSettings() {
-            const upiId = document.getElementById('settingUpiId').value.trim();
-            const merchantName = document.getElementById('settingMerchantName').value.trim();
-
-            if (!upiId || !upiId.includes('@')) {
-                alert('Please enter a valid UPI ID (e.g. name@upi)');
-                return;
-            }
-
-            merchantConfig.vpa = upiId;
-            merchantConfig.name = merchantName || 'Merchant Payment';
-
-            localStorage.setItem('qp_merchant_settings', JSON.stringify(merchantConfig));
-            updateMerchantUI();
-            closeSettingsModal();
-        }
-
-        // Helper Functions
-        function setQuickAmount(val) {
-            document.getElementById('paymentAmount').value = val;
-        }
-
-        function toggleAmountVisibility() {
-            isAmountVisible = !isAmountVisible;
-            const amountEl = document.getElementById('displayAmount');
-            const eyeIcon = document.getElementById('amountEyeIcon');
-            
-            if (isAmountVisible) {
-                amountEl.textContent = `₹${currentAmount.toFixed(2)}`;
-                eyeIcon.setAttribute('data-lucide', 'eye');
-            } else {
-                amountEl.textContent = '₹ ••••';
-                eyeIcon.setAttribute('data-lucide', 'eye-off');
-            }
-            lucide.createIcons();
-        }
-
-        // QR Code Logic
-        function generateQRCode() {
-            const inputVal = document.getElementById('paymentAmount').value;
-            const amount = parseFloat(inputVal);
-
-            if (isNaN(amount) || amount <= 0) {
-                alert('Please enter a valid payment amount greater than 0.');
-                return;
-            }
-
-            currentAmount = amount;
-            const formattedAmount = amount.toFixed(2);
-
-            // Construct standard NPCI compliant UPI URI with fixed amount parameters
-            const pa = encodeURIComponent(merchantConfig.vpa);
-            const pn = encodeURIComponent(merchantConfig.name);
-            const am = encodeURIComponent(formattedAmount);
-            
-            // Standard format for merchant scannability
-            generatedPaymentUri = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&mode=02&orgid=000000`;
-
-            const qrContainer = document.getElementById('qrcode');
-            qrContainer.innerHTML = '';
-
-            // Generate high quality scannable QR Code
-            new QRCode(qrContainer, {
-                text: generatedPaymentUri,
-                width: 220,
-                height: 220,
-                colorDark: '#0f172a',
-                colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.H
-            });
-
-            document.getElementById('displayAmount').textContent = `₹${formattedAmount}`;
-            isAmountVisible = true;
-            const eyeIcon = document.getElementById('amountEyeIcon');
-            if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye');
-
-            document.getElementById('amountInputSection').classList.add('hidden');
-            document.getElementById('qrDisplaySection').classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function downloadQR() {
-            const img = document.querySelector('#qrcode img');
-            const canvas = document.querySelector('#qrcode canvas');
-            
-            let dataUrl = '';
-            if (img && img.src) {
-                dataUrl = img.src;
-            } else if (canvas) {
-                dataUrl = canvas.toDataURL('image/png');
-            }
-
-            if (!dataUrl) {
-                alert('QR code image unavailable for download.');
-                return;
-            }
-
-            const link = document.createElement('a');
-            link.href = dataUrl;
-            link.download = `QuickPay-QR-${currentAmount.toFixed(2)}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function resetQR() {
-            document.getElementById('paymentAmount').value = '';
-            document.getElementById('qrDisplaySection').classList.add('hidden');
-            document.getElementById('amountInputSection').classList.remove('hidden');
-            document.getElementById('qrcode').innerHTML = '';
-        }
-    </script>
+    <!-- Application Script -->
+    <script src="js/app.js"></script>
 </body>
 </html>
