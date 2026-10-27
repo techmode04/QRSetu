@@ -1,9 +1,9 @@
-// QuickPay Application Logic - Mobile First & Clean UI
+// QuickPay Application Logic - Public Multi-User Version
 
-// Default Merchant Configuration
+// Default Configuration (Clean & Neutral for Public Deployment)
 const DEFAULT_CONFIG = {
-    vpa: 'dhislesachin04@ybl',
-    name: 'Dhisle Hardware And Traders'
+    vpa: '',
+    name: ''
 };
 
 // Global State Variables
@@ -22,6 +22,14 @@ window.addEventListener('load', () => {
     registerServiceWorker();
     if (window.lucide) {
         lucide.createIcons();
+    }
+
+    // First time onboarding check: if no UPI ID is saved, welcome user and open setup modal
+    const saved = localStorage.getItem('qp_merchant_settings');
+    if (!saved || !merchantConfig.vpa) {
+        setTimeout(() => {
+            openSettingsModal(true);
+        }, 500);
     }
 });
 
@@ -60,7 +68,7 @@ function showToast(message, iconName = 'check-circle') {
     toastTimeout = setTimeout(() => {
         toast.classList.add('hidden');
         toast.classList.remove('animate-toast');
-    }, 2500);
+    }, 2800);
 }
 
 // Register Service Worker for PWA
@@ -91,7 +99,7 @@ function initPWA() {
         deferredPrompt = null;
         const installBtn = document.getElementById('pwaInstallBtn');
         if (installBtn) installBtn.classList.add('hidden');
-        showToast('App installed successfully!', 'smartphone');
+        showToast('QuickPay installed on your phone!', 'smartphone');
     });
 
     // iOS Safari Detection
@@ -162,7 +170,7 @@ function updateThemeIcon() {
     }
 }
 
-// Settings Handling
+// Settings Handling - User Specific
 function loadSettings() {
     const saved = localStorage.getItem('qp_merchant_settings');
     if (saved) {
@@ -178,38 +186,61 @@ function loadSettings() {
 }
 
 function updateMerchantUI() {
-    const merchantName = merchantConfig.name || DEFAULT_CONFIG.name;
-    const upiId = merchantConfig.vpa || DEFAULT_CONFIG.vpa;
+    const isConfigured = Boolean(merchantConfig.vpa);
+    const merchantName = merchantConfig.name || (isConfigured ? 'My Business' : 'Set Up Business Name');
+    const upiId = merchantConfig.vpa || 'Tap here to add your UPI ID';
 
     const nameEl = document.getElementById('displayMerchantName');
     const upiEl = document.getElementById('displayUpiId');
     const qrShopEl = document.getElementById('qrShopName');
     const qrUpiEl = document.getElementById('qrUpiId');
+    const verifiedBadge = document.getElementById('merchantVerifiedBadge');
+    const avatarInitial = document.getElementById('merchantAvatarInitial');
+    const setupAlert = document.getElementById('setupRequiredAlert');
 
     if (nameEl) nameEl.textContent = merchantName;
     if (upiEl) upiEl.textContent = upiId;
     if (qrShopEl) qrShopEl.textContent = merchantName;
     if (qrUpiEl) qrUpiEl.textContent = upiId;
 
-    // Reset logo fallback
-    const imgEl = document.getElementById('merchantLogoImg');
-    const fallbackEl = document.getElementById('merchantLogoFallback');
-    if (imgEl) imgEl.classList.remove('hidden');
-    if (fallbackEl) fallbackEl.classList.add('hidden');
-}
-
-function handleLogoError(img) {
-    if (img) img.classList.add('hidden');
-    const fallback = document.getElementById('merchantLogoFallback');
-    if (fallback) {
-        fallback.textContent = (merchantConfig.name || 'D').charAt(0).toUpperCase();
-        fallback.classList.remove('hidden');
+    // Avatar Letter or Icon
+    if (avatarInitial) {
+        if (isConfigured && merchantConfig.name) {
+            avatarInitial.innerHTML = `<span>${merchantConfig.name.trim().charAt(0).toUpperCase()}</span>`;
+        } else {
+            avatarInitial.innerHTML = `<i data-lucide="store" class="w-5 h-5 text-indigo-500"></i>`;
+        }
     }
+
+    // Verified badge check
+    if (verifiedBadge) {
+        if (isConfigured) {
+            verifiedBadge.classList.remove('hidden');
+        } else {
+            verifiedBadge.classList.add('hidden');
+        }
+    }
+
+    // Top alert banner if not configured yet
+    if (setupAlert) {
+        if (isConfigured) {
+            setupAlert.classList.add('hidden');
+        } else {
+            setupAlert.classList.remove('hidden');
+        }
+    }
+
+    if (window.lucide) lucide.createIcons();
 }
 
 function copyUpiId() {
     triggerHaptic(20);
-    const upi = merchantConfig.vpa || DEFAULT_CONFIG.vpa;
+    if (!merchantConfig.vpa) {
+        openSettingsModal(true);
+        return;
+    }
+
+    const upi = merchantConfig.vpa;
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(upi).then(() => {
             showToast('UPI ID copied to clipboard!', 'check');
@@ -238,14 +269,30 @@ function fallbackCopy(text) {
     document.body.removeChild(textArea);
 }
 
-function openSettingsModal() {
+function openSettingsModal(isFirstTime = false) {
     triggerHaptic(15);
     document.getElementById('settingUpiId').value = merchantConfig.vpa || '';
     document.getElementById('settingMerchantName').value = merchantConfig.name || '';
+
+    const modalTitle = document.getElementById('settingsModalTitle');
+    const modalSubtitle = document.getElementById('settingsModalSubtitle');
+
+    if (isFirstTime || !merchantConfig.vpa) {
+        if (modalTitle) modalTitle.textContent = 'Welcome! Setup Your UPI';
+        if (modalSubtitle) modalSubtitle.textContent = 'Enter your own Shop Name & UPI ID to start receiving payments directly to your account.';
+    } else {
+        if (modalTitle) modalTitle.textContent = 'Merchant Settings';
+        if (modalSubtitle) modalSubtitle.textContent = 'Edit your receiver details anytime. Payments go directly to your account.';
+    }
+
     const modal = document.getElementById('settingsModal');
     if (modal) {
         modal.classList.remove('hidden');
         if (window.lucide) lucide.createIcons();
+        setTimeout(() => {
+            const inputTarget = merchantConfig.name ? document.getElementById('settingUpiId') : document.getElementById('settingMerchantName');
+            if (inputTarget) inputTarget.focus();
+        }, 150);
     }
 }
 
@@ -261,7 +308,8 @@ function saveSettings() {
     const merchantName = document.getElementById('settingMerchantName').value.trim();
 
     if (!upiId || !upiId.includes('@')) {
-        showToast('Please enter a valid UPI ID (e.g. name@upi)', 'alert-circle');
+        showToast('Please enter a valid UPI ID (e.g. name@okhdfcbank or 9876543210@paytm)', 'alert-circle');
+        document.getElementById('settingUpiId').focus();
         return;
     }
 
@@ -271,7 +319,18 @@ function saveSettings() {
     localStorage.setItem('qp_merchant_settings', JSON.stringify(merchantConfig));
     updateMerchantUI();
     closeSettingsModal();
-    showToast('Merchant settings saved!', 'check-check');
+    showToast('Your details saved successfully!', 'check-check');
+}
+
+// Reset Stored Details
+function resetSavedMerchantDetails() {
+    if (confirm('Do you want to reset your saved UPI ID and Shop Name?')) {
+        localStorage.removeItem('qp_merchant_settings');
+        merchantConfig = { ...DEFAULT_CONFIG };
+        updateMerchantUI();
+        closeSettingsModal();
+        showToast('Settings reset to default', 'refresh-cw');
+    }
 }
 
 // Amount Input Helpers
@@ -328,11 +387,19 @@ function toggleAmountVisibility() {
 // QR Code Generation Logic
 function generateQRCode() {
     triggerHaptic(30);
+
+    // Validate if user has configured their UPI ID first
+    if (!merchantConfig.vpa || !merchantConfig.vpa.includes('@')) {
+        showToast('Please set your own UPI ID first!', 'alert-circle');
+        openSettingsModal(true);
+        return;
+    }
+
     const inputVal = document.getElementById('paymentAmount').value;
     const amount = parseFloat(inputVal);
 
     if (isNaN(amount) || amount <= 0) {
-        showToast('Please enter a valid amount (greater than ₹0)', 'alert-circle');
+        showToast('Please enter a payment amount greater than ₹0', 'alert-circle');
         document.getElementById('paymentAmount').focus();
         return;
     }
@@ -340,9 +407,9 @@ function generateQRCode() {
     currentAmount = amount;
     const formattedAmount = amount.toFixed(2);
 
-    // Standard NPCI compliant UPI URI
+    // Standard NPCI compliant UPI URI with user's customized details
     const pa = encodeURIComponent(merchantConfig.vpa);
-    const pn = encodeURIComponent(merchantConfig.name);
+    const pn = encodeURIComponent(merchantConfig.name || 'Merchant');
     const am = encodeURIComponent(formattedAmount);
 
     generatedPaymentUri = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&mode=02&orgid=000000`;
@@ -394,9 +461,10 @@ function downloadQR() {
         return;
     }
 
+    const safeName = (merchantConfig.name || 'QuickPay').replace(/[^a-zA-Z0-9]/g, '-');
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = `QuickPay-₹${currentAmount.toFixed(2)}.png`;
+    link.download = `${safeName}-₹${currentAmount.toFixed(2)}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -406,11 +474,12 @@ function downloadQR() {
 // Share QR Code / Payment via Web Share API
 function sharePayment() {
     triggerHaptic(20);
-    const shareText = `Pay ₹${currentAmount.toFixed(2)} to ${merchantConfig.name} via UPI:\n${generatedPaymentUri}`;
+    const shopName = merchantConfig.name || 'Merchant';
+    const shareText = `Pay ₹${currentAmount.toFixed(2)} to ${shopName} via UPI:\n${generatedPaymentUri}`;
 
     if (navigator.share) {
         navigator.share({
-            title: `Payment to ${merchantConfig.name}`,
+            title: `Payment to ${shopName}`,
             text: shareText,
             url: generatedPaymentUri
         }).then(() => {

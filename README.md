@@ -1,19 +1,29 @@
 # 💳 QuickPay - Simple UPI Payments (PWA)
 
-A fast, lightweight, and responsive Progressive Web App (PWA) to generate dynamic UPI QR codes with custom amounts for Indian businesses and merchants.
+A fast, lightweight, and modern Progressive Web App (PWA) to generate dynamic UPI QR codes with custom amounts for Indian businesses, shopkeepers, freelancers, and individuals.
 
 ![QuickPay Logo](logo.png)
+
+---
+
+## 🌟 100% Public & Multi-User Ready
+
+QuickPay is designed to be **publicly shared and installed by anyone**:
+- 🔒 **Client-Side & Private**: Every user sets their **own UPI ID** and **Shop / Business Name**.
+- 💾 **Local Storage**: User details are saved securely on their own device (`localStorage`). No backend or database required.
+- 👋 **Automatic Onboarding**: First-time visitors are welcomed with a setup popup to enter their UPI ID and shop name.
+- ⚡ **Instant UPI QR**: Generates dynamic NPCI-compliant QR codes (`upi://pay`) for exact amounts.
 
 ---
 
 ## ✨ Features
 
 - 📱 **Mobile App Installable (PWA)**: Works like a native mobile app on Android, iOS (iPhone/iPad), and Desktop.
-- ⚡ **Dynamic UPI QR Code**: Generates standard NPCI-compliant UPI payment QR codes (`upi://pay`) for any entered amount.
-- 🏪 **Customizable Merchant Settings**: Easily configure Shop Name and UPI ID (VPA), saved locally in browser storage.
-- 💰 **Quick Amount Chips**: One-tap quick selection buttons (₹100, ₹200, ₹500, ₹1,000).
-- 🌓 **Dark & Light Mode**: Seamless theme switching with saved preference.
-- 📥 **Download QR Code**: Download the generated QR code directly as a PNG image for sharing or printing.
+- ⚡ **Dynamic UPI QR Code**: Enter any amount, and the QR code updates automatically with that fixed amount.
+- 🏪 **Customizable Merchant Profile**: Easily edit Shop Name & UPI ID anytime with a single tap.
+- 💰 **Quick Amount Chips**: Instant one-tap chips (`₹100`, `₹200`, `₹500`, `₹1,000`, `₹2,000`, `₹5,000`).
+- 🌓 **OLED Dark & Clean Light Mode**: Automatic preference detection and manual toggle.
+- 📥 **Download & Share**: Save QR code image or share payment links via WhatsApp / Telegram / SMS.
 - 📴 **Offline Ready**: Powered by Service Worker (`sw.js`) and Web App Manifest (`manifest.json`).
 
 ---
@@ -26,7 +36,7 @@ Quick-Pay/
 ├── css/
 │   └── style.css       # Custom styles, fonts, and animations
 ├── js/
-│   └── app.js          # Application logic, PWA handlers, and QR generator
+│   └── app.js          # App logic, multi-user storage, and QR generator
 ├── manifest.json       # Web App Manifest for mobile installation
 ├── sw.js               # Service Worker for offline capability & PWA install
 ├── logo.png            # 512x512 Main App Icon (used for installed app logo)
@@ -41,9 +51,9 @@ Quick-Pay/
 
 ### 🤖 Android (Google Chrome / Brave / Edge)
 1. Open the website URL in Google Chrome.
-2. Tap the **"Install App"** button at the top header, OR tap the Chrome menu (3 dots) in the top-right corner.
+2. Tap the **"Install"** button at the top header, OR tap the Chrome menu (3 dots) in the top-right corner.
 3. Select **"Install app"** or **"Add to Home screen"**.
-4. The app icon will appear on your home screen with `logo.png`.
+4. The app will be installed on your home screen with `logo.png`.
 
 ### 🍎 iPhone / iPad (iOS Safari)
 1. Open the website URL in **Safari**.
@@ -60,9 +70,8 @@ Quick-Pay/
 Open PowerShell or Terminal inside the `Quick-Pay` folder and run:
 
 ```bash
-git init
 git add .
-git commit -m "Initial commit: QuickPay UPI Generator PWA"
+git commit -m "Make QuickPay public and multi-user friendly"
 git branch -M main
 ```
 
@@ -84,16 +93,9 @@ git push -u origin main
 5. Within 1-2 minutes, your live site will be ready at:
    `https://<YOUR-USERNAME>.github.io/quick-pay/`
 
-Now open this link on your phone to install it as an app!
-
----
-
-## 🎨 Changing Your App Logo or Merchant Details
-
-- **Change App Icon / Logo**: Simply replace `logo.png` (and `logo-192.png`) with your own image (recommended size: 512x512 PNG).
-- **Change Default Merchant**: Click the ⚙️ (Settings) icon inside the app to change your UPI ID and Shop Name anytime.
+Anyone who opens this link can install it and use it with their own UPI ID!
 
 ---
 
 ## 📄 License
-MIT License. Created with ❤️ for Indian merchants and small businesses.
+MIT License. Created with ❤️ for merchants and businesses everywhere.
