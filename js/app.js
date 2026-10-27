@@ -506,27 +506,33 @@ function generateQRCode() {
     currentAmount = amount;
     const formattedAmount = amount.toFixed(2);
 
-    // Standard NPCI compliant UPI URI
-    const pa = encodeURIComponent(merchantConfig.vpa);
-    const pn = encodeURIComponent(merchantConfig.name || 'Merchant');
+    // Standard NPCI compliant UPI URI (clean parameters for 100% scannability across all UPI apps)
+    const pa = encodeURIComponent(merchantConfig.vpa.trim());
+    const pn = encodeURIComponent((merchantConfig.name || 'Merchant').trim());
     const am = encodeURIComponent(formattedAmount);
 
-    generatedPaymentUri = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&mode=02&orgid=000000`;
+    generatedPaymentUri = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR`;
 
     const qrContainer = document.getElementById('qrcode');
     if (qrContainer) {
         qrContainer.innerHTML = '';
 
-        // Generate clean high-resolution QR
+        // Generate clean high-contrast scannable QR Code
         new QRCode(qrContainer, {
             text: generatedPaymentUri,
-            width: 230,
-            height: 230,
-            colorDark: '#090e17',
+            width: 240,
+            height: 240,
+            colorDark: '#000000',
             colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.H
+            correctLevel: QRCode.CorrectLevel.M
         });
     }
+
+    // Ensure Shop Name & UPI ID are updated on QR screen
+    const qrShopNameEl = document.getElementById('qrShopName');
+    const qrUpiIdEl = document.getElementById('qrUpiId');
+    if (qrShopNameEl) qrShopNameEl.textContent = merchantConfig.name || 'Merchant Payment';
+    if (qrUpiIdEl) qrUpiIdEl.textContent = merchantConfig.vpa;
 
     document.getElementById('displayAmount').textContent = `₹${formattedAmount}`;
     isAmountVisible = true;
@@ -542,32 +548,154 @@ function generateQRCode() {
     showToast(`QR Code generated for ₹${formattedAmount}`, 'qr-code');
 }
 
-// Download QR Code as PNG
+// Download QR Code as a High-Resolution Merchant Payment Card
 function downloadQR() {
     triggerHaptic(20);
-    const img = document.querySelector('#qrcode img');
-    const canvas = document.querySelector('#qrcode canvas');
+    const qrCanvas = document.querySelector('#qrcode canvas');
+    const qrImg = document.querySelector('#qrcode img');
 
-    let dataUrl = '';
-    if (img && img.src) {
-        dataUrl = img.src;
-    } else if (canvas) {
-        dataUrl = canvas.toDataURL('image/png');
+    let qrSource = null;
+    if (qrCanvas && qrCanvas.width > 0) {
+        qrSource = qrCanvas;
+    } else if (qrImg && qrImg.src) {
+        qrSource = qrImg;
     }
 
-    if (!dataUrl) {
+    if (!qrSource) {
         showToast('QR Code not ready for download', 'alert-circle');
         return;
     }
 
+    // High resolution canvas for sharp printing & scanning (720x980)
+    const cardCanvas = document.createElement('canvas');
+    const W = 720;
+    const H = 980;
+    cardCanvas.width = W;
+    cardCanvas.height = H;
+    const ctx = cardCanvas.getContext('2d');
+
+    // 1. Clean White Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. Top Header Accent Banner
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, '#4338ca');
+    grad.addColorStop(1, '#6366f1');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, 110);
+
+    // Header Title & Tagline
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 30px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('QRSetu - SCAN & PAY', W / 2, 54);
+
+    ctx.fillStyle = '#c7d2fe';
+    ctx.font = '16px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.fillText('Accepting Payments via Any UPI App', W / 2, 85);
+
+    // 3. Shop Name Display (Configured by user)
+    const shopName = (merchantConfig.name || 'Merchant Payment').trim();
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 36px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.textAlign = 'center';
+
+    let displayShop = shopName;
+    if (displayShop.length > 28) {
+        displayShop = displayShop.slice(0, 26) + '...';
+    }
+    ctx.fillText(displayShop, W / 2, 175);
+
+    // UPI ID subtitle
+    ctx.fillStyle = '#64748b';
+    ctx.font = '600 20px "JetBrains Mono", Courier, monospace';
+    ctx.fillText(merchantConfig.vpa, W / 2, 212);
+
+    // Amount Badge Box
+    const amtBoxY = 238;
+    const amtBoxW = 340;
+    const amtBoxH = 54;
+    const amtBoxX = (W - amtBoxW) / 2;
+
+    ctx.fillStyle = '#eef2ff';
+    roundRect(ctx, amtBoxX, amtBoxY, amtBoxW, amtBoxH, 14);
+    ctx.fill();
+
+    ctx.strokeStyle = '#c7d2fe';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, amtBoxX, amtBoxY, amtBoxW, amtBoxH, 14);
+    ctx.stroke();
+
+    ctx.fillStyle = '#4338ca';
+    ctx.font = 'bold 26px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.fillText(`Amount: ₹${currentAmount.toFixed(2)}`, W / 2, amtBoxY + 36);
+
+    // 4. QR Code Box (with large white quiet-zone padding for 100% scan guarantee)
+    const qrSize = 440;
+    const qrX = (W - qrSize) / 2;
+    const qrY = 320;
+
+    // QR Outer Frame
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, qrX - 18, qrY - 18, qrSize + 36, qrSize + 36, 22);
+    ctx.fill();
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2;
+    roundRect(ctx, qrX - 18, qrY - 18, qrSize + 36, qrSize + 36, 22);
+    ctx.stroke();
+
+    // Draw QR Code
+    ctx.drawImage(qrSource, qrX, qrY, qrSize, qrSize);
+
+    // 5. Supported UPI Apps Banner
+    const appsY = 820;
+    ctx.fillStyle = '#f8fafc';
+    roundRect(ctx, 40, appsY, W - 80, 50, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    roundRect(ctx, 40, appsY, W - 80, 50, 12);
+    ctx.stroke();
+
+    ctx.fillStyle = '#475569';
+    ctx.font = '600 17px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.fillText('Google Pay   •   PhonePe   •   Paytm   •   BHIM   •   Cred', W / 2, appsY + 32);
+
+    // 6. Footer - Exact requested attribution: "Developed by sachindhisle04"
+    ctx.fillStyle = '#334155';
+    ctx.font = 'bold 18px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.fillText('Developed by sachindhisle04', W / 2, 915);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '13px "Plus Jakarta Sans", Arial, sans-serif';
+    ctx.fillText('Scan with any UPI app to complete payment', W / 2, 945);
+
+    // Helper for rounded rectangles
+    function roundRect(c, x, y, w, h, r) {
+        c.beginPath();
+        c.moveTo(x + r, y);
+        c.lineTo(x + w - r, y);
+        c.quadraticCurveTo(x + w, y, x + w, y + r);
+        c.lineTo(x + w, y + h - r);
+        c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        c.lineTo(x + r, y + h);
+        c.quadraticCurveTo(x, y + h, x, y + h - r);
+        c.lineTo(x, y + r);
+        c.quadraticCurveTo(x, y, x + r, y);
+        c.closePath();
+    }
+
+    // Trigger Download
+    const dataUrl = cardCanvas.toDataURL('image/png');
     const safeName = (merchantConfig.name || 'QRSetu').replace(/[^a-zA-Z0-9]/g, '-');
     const link = document.createElement('a');
     link.href = dataUrl;
-    link.download = `QRSetu-${safeName}-₹${currentAmount.toFixed(2)}.png`;
+    link.download = `${safeName}-QR-₹${currentAmount.toFixed(2)}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast('QR Code saved to gallery/downloads!', 'check');
+    showToast('Payment QR Card downloaded!', 'check');
 }
 
 // Share QR Code / Payment via Web Share API
