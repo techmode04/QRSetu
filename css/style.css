@@ -125,3 +125,18 @@ input[type=number] {
 .dark .card-glow {
     box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
+
+/* Calculator Buttons */
+.calc-btn {
+    transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.12s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.calc-btn:active {
+    transform: scale(0.92);
+    opacity: 0.85;
+}

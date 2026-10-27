@@ -747,3 +747,153 @@ function resetQR() {
     document.getElementById('qrcode').innerHTML = '';
     amountInput.focus();
 }
+
+// ==========================================
+// Quick Billing Calculator Engine
+// ==========================================
+let calcExpression = '';
+let calcResult = '0';
+let isEvaluated = false;
+
+function updateCalcDisplay() {
+    const histEl = document.getElementById('calcHistory');
+    const outEl = document.getElementById('calcOutput');
+    if (histEl) histEl.textContent = calcExpression || '0';
+    if (outEl) outEl.textContent = calcResult || '0';
+}
+
+function calcInput(char) {
+    triggerHaptic(10);
+    if (isEvaluated) {
+        if (!isNaN(char) || char === '.') {
+            calcExpression = '';
+            calcResult = '0';
+        }
+        isEvaluated = false;
+    }
+
+    if (char === '.') {
+        const parts = calcExpression.split(/[\+\-\×\÷]/);
+        const lastPart = parts[parts.length - 1];
+        if (lastPart.includes('.')) return;
+        if (!lastPart) calcExpression += '0';
+    }
+
+    calcExpression += char;
+    calcResult = calcExpression;
+    updateCalcDisplay();
+}
+
+function calcAction(action) {
+    triggerHaptic(12);
+    if (action === 'C') {
+        calcExpression = '';
+        calcResult = '0';
+        isEvaluated = false;
+        updateCalcDisplay();
+        return;
+    }
+
+    if (action === 'DEL') {
+        if (calcExpression.length > 0) {
+            calcExpression = calcExpression.slice(0, -1);
+            calcResult = calcExpression || '0';
+        } else {
+            calcResult = '0';
+        }
+        updateCalcDisplay();
+        return;
+    }
+
+    // Operators (+, -, ×, ÷, %)
+    if (['+', '-', '×', '÷', '%'].includes(action)) {
+        if (calcExpression === '') {
+            if (calcResult !== '0' && isEvaluated) {
+                calcExpression = calcResult;
+            } else if (action === '-') {
+                calcExpression = '-';
+                calcResult = '-';
+                updateCalcDisplay();
+                return;
+            } else {
+                return;
+            }
+        }
+
+        const lastChar = calcExpression.slice(-1);
+        if (['+', '-', '×', '÷', '%'].includes(lastChar)) {
+            calcExpression = calcExpression.slice(0, -1) + action;
+        } else {
+            calcExpression += action;
+        }
+        isEvaluated = false;
+        calcResult = calcExpression;
+        updateCalcDisplay();
+    }
+}
+
+function safeEvaluate(expr) {
+    if (!expr) return 0;
+    let clean = expr.trim();
+    clean = clean.replace(/[\+\-\×\÷%]+$/, '');
+    clean = clean.replace(/×/g, '*').replace(/÷/g, '/');
+
+    // Handle percentage additions / discounts (e.g. 100 + 18% or 100 - 10%)
+    clean = clean.replace(/(\d+(?:\.\d+)?)\s*([\+\-])\s*(\d+(?:\.\d+)?)%/g, '($1 $2 ($1 * ($3 / 100)))');
+    clean = clean.replace(/(\d+(?:\.\d+)?)%/g, '($1 / 100)');
+
+    if (!/^[0-9\.\+\-\*\/\(\)\s]+$/.test(clean)) {
+        return 0;
+    }
+
+    try {
+        const fn = new Function(`return (${clean})`);
+        const res = fn();
+        if (isNaN(res) || !isFinite(res)) return 0;
+        return Math.round(res * 100) / 100;
+    } catch (e) {
+        return 0;
+    }
+}
+
+function calcEquals() {
+    triggerHaptic(20);
+    if (!calcExpression) return;
+    const total = safeEvaluate(calcExpression);
+    const historyText = calcExpression + ' =';
+    calcResult = total.toString();
+    calcExpression = total.toString();
+    isEvaluated = true;
+
+    const histEl = document.getElementById('calcHistory');
+    const outEl = document.getElementById('calcOutput');
+    if (histEl) histEl.textContent = historyText;
+    if (outEl) outEl.textContent = '₹ ' + calcResult;
+}
+
+function applyCalcToAmount() {
+    triggerHaptic(25);
+    let finalVal = 0;
+    if (!isEvaluated && calcExpression) {
+        finalVal = safeEvaluate(calcExpression);
+        calcResult = finalVal.toString();
+        calcExpression = finalVal.toString();
+        isEvaluated = true;
+        updateCalcDisplay();
+    } else {
+        finalVal = parseFloat(calcResult.replace(/[^0-9.]/g, '')) || 0;
+    }
+
+    if (finalVal <= 0) {
+        showToast('Calculate an amount greater than 0 first', 'alert-circle');
+        return;
+    }
+
+    const amtInput = document.getElementById('paymentAmount');
+    if (amtInput) {
+        amtInput.value = finalVal.toFixed(2);
+        toggleClearBtn();
+        amtInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        showToast(`Total ₹${finalVal.toFixed(2)} applied to QR!`, 'check');
+    }
+}
