@@ -3,30 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="description" content="QuickPay - Simple UPI Payments with dynamic QR code generation for Indian businesses.">
     <title>QuickPay - Simple UPI Payments</title>
-    <!-- Tailwind CSS for modern layout & styling -->
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- QRCode.js Library for client-side QR generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eep2ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Inter Font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Web App / PWA Meta Tags -->
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="QuickPay">
+    <!-- QRCode.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
+    <!-- App Custom Styles -->
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            transition: background-color 0.3s ease, color 0.3s ease;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
         }
-        /* Hide number spin buttons */
+        /* Hide spin buttons for numeric input */
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -37,597 +51,448 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-indigo-600 selection:text-white bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+<body class="bg-gray-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col justify-between antialiased">
 
-    <!-- Header / Navbar -->
-    <header class="w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 transition-colors">
-        <div class="max-w-2xl mx-auto px-4 py-3.5 flex items-center justify-between">
+    <!-- Top Navigation Header -->
+    <header class="w-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-700 sticky top-0 z-40">
+        <div class="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-                <div class="w-9 h-9 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl flex items-center justify-center font-extrabold text-lg shadow-sm">
-                    ₹
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                    <i data-lucide="qr-code" class="w-5 h-5"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-white">QuickPay</h1>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Simple UPI Payments</p>
+                    <h1 class="font-bold text-lg leading-none tracking-tight">QuickPay</h1>
+                    <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Simple UPI Payments</span>
                 </div>
             </div>
-            
+
             <div class="flex items-center gap-2">
-                <!-- Theme Toggle Button -->
-                <button id="themeToggleBtn" onclick="toggleDarkMode()" aria-label="Toggle Theme" class="p-2 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors border border-slate-200 dark:border-slate-700/60">
-                    <i id="themeIcon" data-lucide="moon" class="w-4 h-4"></i>
+                <!-- PWA Install Button -->
+                <button id="pwaInstallBtn" onclick="triggerPWAInstall()" class="hidden px-3 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    <span>Install App</span>
                 </button>
 
-                <!-- Install App Button (Shows when available) -->
-                <button id="pwaInstallBtn" onclick="installPWA()" class="hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm">
-                    <i data-lucide="download-cloud" class="w-4 h-4"></i>
-                    <span class="hidden sm:inline">Install App</span>
+                <!-- Dark Mode Toggle Button -->
+                <button onclick="toggleDarkMode()" aria-label="Toggle Theme" class="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition">
+                    <i id="themeIcon" data-lucide="moon" class="w-5 h-5"></i>
                 </button>
 
                 <!-- Settings Button -->
-                <button id="openSettingsBtn" onclick="toggleSettingsModal(true)" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors border border-slate-200 dark:border-slate-700/60">
-                    <i data-lucide="settings" class="w-4 h-4"></i>
-                    <span id="settingsBtnText" class="hidden sm:inline">Settings</span>
+                <button onclick="openSettingsModal()" aria-label="Settings" class="p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="w-full max-w-md mx-auto px-4 py-8 flex-1 flex flex-col justify-center">
+    <!-- Main Content Container -->
+    <main class="w-full max-w-xl mx-auto px-4 py-6 flex-1 flex flex-col justify-center">
 
-        <!-- Active Merchant Info Chip (Edit button removed as requested) -->
-        <div id="merchantChip" class="mb-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex items-center justify-between text-sm shadow-sm transition-colors">
-            <div class="flex items-center gap-3 overflow-hidden">
-                <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center shrink-0 text-sm shadow-xs overflow-hidden" id="merchantAvatarContainer">
-                    <span id="merchantAvatarText">D</span>
-                    <img id="merchantAvatarImg" class="w-full h-full object-cover hidden" alt="Shop Logo" />
-                </div>
-                <div class="truncate">
-                    <p class="font-bold text-slate-900 dark:text-slate-100 truncate" id="chipName">Dhisle Hardware And Traders</p>
-                    <p class="text-xs font-mono text-slate-500 dark:text-slate-400 truncate" id="chipVpa">dhislesachin04@ybl</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Notification Banner -->
-        <div id="alertBox" class="hidden mb-6 p-3.5 rounded-xl border text-xs font-medium flex items-center gap-2.5">
-            <i id="alertIcon" data-lucide="info" class="w-4 h-4 shrink-0"></i>
-            <span id="alertMessage" class="flex-1"></span>
-        </div>
-
-        <!-- Section 1: Payment Generation Form -->
-        <section id="paymentFormCard" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs transition-colors">
-            <form id="qrForm" onsubmit="handleGenerateQR(event)">
-                <!-- Amount Input -->
-                <div class="mb-5">
-                    <label for="amount" class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                        Enter Amount
-                    </label>
-                    <div class="relative flex items-center">
-                        <span class="absolute left-4 text-3xl font-extrabold text-slate-400 dark:text-slate-500 select-none">₹</span>
-                        <input 
-                            type="number" 
-                            id="amount" 
-                            name="amount" 
-                            step="0.01" 
-                            min="0.01" 
-                            placeholder="0.00" 
-                            required 
-                            autofocus
-                            class="w-full pl-10 pr-4 py-3 text-3xl font-extrabold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                        >
+        <!-- Merchant Info Card -->
+        <div class="mb-5 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-gray-200/80 dark:border-slate-700/80 shadow-xs flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img id="merchantLogoImg" src="logo.png" alt="Shop Logo" class="w-full h-full object-cover" onerror="handleLogoError(this)">
+                    <div id="merchantLogoFallback" class="hidden w-full h-full font-bold text-lg text-indigo-600 dark:text-indigo-400 flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/50">
+                        D
                     </div>
                 </div>
-
-                <!-- Transaction Note (Optional) -->
-                <div class="mb-6">
-                    <label for="note" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
-                        Note / Description <span class="text-slate-400 dark:text-slate-500 font-normal">(Optional)</span>
-                    </label>
-                    <input 
-                        type="text" 
-                        id="note" 
-                        placeholder="e.g. Bill Payment, Order #102" 
-                        maxlength="40"
-                        class="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 rounded-xl focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
-                    >
+                <div class="overflow-hidden">
+                    <h2 id="displayMerchantName" class="font-semibold text-slate-900 dark:text-slate-100 truncate">Dhisle Hardware And Traders</h2>
+                    <p id="displayUpiId" class="text-xs text-slate-500 dark:text-slate-400 font-mono truncate">dhislesachin04@ybl</p>
                 </div>
+            </div>
+            <button onclick="openSettingsModal()" class="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition" title="Settings">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+            </button>
+        </div>
 
-                <!-- Generate Action Button -->
-                <button 
-                    type="submit" 
-                    id="generateBtn"
-                    class="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-semibold rounded-2xl text-sm transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2"
+        <!-- Section 1: Amount Entry View -->
+        <div id="amountInputSection" class="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-gray-200/80 dark:border-slate-700/80 shadow-sm">
+            <label for="paymentAmount" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+                Enter Payment Amount
+            </label>
+            
+            <div class="relative mb-6">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400 dark:text-slate-500">₹</span>
+                <input 
+                    type="number" 
+                    id="paymentAmount" 
+                    step="0.01" 
+                    min="1" 
+                    placeholder="0.00" 
+                    class="w-full bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-3xl font-extrabold pl-10 pr-4 py-4 rounded-2xl border border-gray-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition"
+                    onkeypress="if(event.key==='Enter') generateQRCode()"
                 >
-                    <i data-lucide="qr-code" class="w-4 h-4"></i>
-                    <span>Generate UPI QR Code</span>
-                </button>
-            </form>
-        </section>
+            </div>
 
-        <!-- Section 2: Dynamic Display Card (Generated QR Code) -->
-        <section id="qrDisplayCard" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center shadow-xs transition-colors">
-            <!-- Fixed Amount Banner with Hide/Show Toggle -->
-            <div class="mb-4 relative">
-                <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Paying Total</span>
+            <!-- Quick Amount Chips -->
+            <div class="grid grid-cols-4 gap-2 mb-6">
+                <button type="button" onclick="setQuickAmount(100)" class="py-2 text-sm font-semibold rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition">₹100</button>
+                <button type="button" onclick="setQuickAmount(200)" class="py-2 text-sm font-semibold rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition">₹200</button>
+                <button type="button" onclick="setQuickAmount(500)" class="py-2 text-sm font-semibold rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition">₹500</button>
+                <button type="button" onclick="setQuickAmount(1000)" class="py-2 text-sm font-semibold rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800 transition">₹1,000</button>
+            </div>
+
+            <button 
+                onclick="generateQRCode()" 
+                class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 text-base transition"
+            >
+                <i data-lucide="qr-code" class="w-5 h-5"></i>
+                <span>Generate QR Code</span>
+            </button>
+        </div>
+
+        <!-- Section 2: Generated QR View (Initially Hidden) -->
+        <div id="qrDisplaySection" class="hidden bg-white dark:bg-slate-800 rounded-3xl p-6 border border-gray-200/80 dark:border-slate-700/80 shadow-sm text-center">
+            
+            <!-- Amount Header with Eye Toggle -->
+            <div class="mb-4">
+                <p class="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Paying Amount</p>
                 <div class="flex items-center justify-center gap-2">
-                    <div class="text-4xl font-black text-slate-900 dark:text-white" id="displayAmount">₹0.00</div>
-                    <button type="button" onclick="toggleAmountVisibility()" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-colors" title="Toggle Amount Visibility">
-                        <i id="toggleAmountIcon" data-lucide="eye" class="w-5 h-5"></i>
+                    <span id="displayAmount" class="text-3xl font-extrabold text-slate-900 dark:text-slate-100">₹0.00</span>
+                    <button onclick="toggleAmountVisibility()" aria-label="Toggle Amount Visibility" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
+                        <i id="amountEyeIcon" data-lucide="eye" class="w-5 h-5"></i>
                     </button>
                 </div>
-                <p id="displayNote" class="text-xs text-slate-500 dark:text-slate-400 mt-1 italic hidden"></p>
             </div>
 
-            <!-- QR Code Container Card -->
-            <div class="my-5 p-5 bg-white rounded-2xl inline-block shadow-md border border-slate-200 dark:border-slate-700 relative group">
+            <!-- QR Container -->
+            <div class="p-4 bg-white rounded-2xl border border-gray-200 shadow-inner inline-block my-2">
                 <div id="qrcode" class="flex justify-center items-center"></div>
-                <div class="mt-3 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200/80 rounded-lg py-1.5 px-2.5">
-                    ⚠️ Scan & check payee details before approving
-                </div>
             </div>
 
-            <!-- Payee Details -->
-            <div class="mb-6 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 rounded-xl p-3 text-xs text-slate-600 dark:text-slate-300">
-                <div class="font-bold text-slate-900 dark:text-slate-100" id="displayReceiverName">Receiver Name</div>
-                <div class="font-mono text-slate-500 dark:text-slate-400 mt-0.5" id="displayUpiId">upi@handle</div>
+            <!-- Recipient Subtitle -->
+            <div class="mt-3 mb-5">
+                <p class="text-sm font-bold text-slate-800 dark:text-slate-200" id="qrShopName">Dhisle Hardware And Traders</p>
+                <p class="text-xs text-slate-500 font-mono" id="qrUpiId">dhislesachin04@ybl</p>
             </div>
+
+            <p class="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-900/60 mb-5 font-medium">
+                Please pay the exact amount displayed on your UPI App screen.
+            </p>
 
             <!-- Actions -->
-            <div class="space-y-2.5">
+            <div class="grid grid-cols-2 gap-3">
                 <button 
-                    onclick="downloadQRCode()" 
-                    class="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-semibold rounded-xl text-sm transition-all shadow-xs flex items-center justify-center gap-2"
+                    onclick="downloadQR()" 
+                    class="py-3 px-4 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 font-semibold rounded-xl border border-gray-200 dark:border-slate-600 flex items-center justify-center gap-2 text-sm transition"
                 >
                     <i data-lucide="download" class="w-4 h-4"></i>
-                    <span>Download QR Code</span>
+                    <span>Download PNG</span>
                 </button>
-
                 <button 
                     onclick="resetQR()" 
-                    class="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700/60"
+                    class="py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 text-sm transition"
                 >
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                    <span>Generate Another QR</span>
+                    <span>New Payment</span>
                 </button>
             </div>
 
-            <!-- Instructions -->
-            <div class="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 text-left">
-                <div class="flex gap-2.5 items-start">
-                    <i data-lucide="smartphone" class="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5"></i>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Open any supported UPI app (GPay, PhonePe, Paytm, BHIM), scan this QR code, verify receiver details & amount, and enter your UPI PIN.
-                    </p>
-                </div>
-            </div>
-        </section>
+            <p class="mt-5 text-xs text-slate-400 dark:text-slate-500">
+                Open Google Pay, PhonePe, Paytm, or any UPI app to scan.
+            </p>
+        </div>
 
     </main>
 
     <!-- Footer -->
-    <footer class="w-full py-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
-        <div class="max-w-2xl mx-auto px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium space-y-1">
-            <p>QuickPay • Client-Side Dynamic QR Generator</p>
-            <p class="text-slate-400 dark:text-slate-500">Developed by <span class="font-semibold text-slate-700 dark:text-slate-300">sachindhisle04</span></p>
-        </div>
+    <footer class="w-full py-4 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-gray-200/60 dark:border-slate-800 mt-6">
+        <p>QuickPay UPI Generator &bull; Developed by <span class="font-semibold text-slate-600 dark:text-slate-400">sachindhisle04</span></p>
     </footer>
 
-    <!-- Settings Modal (With Shop Logo Upload Added) -->
-    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 transform transition-all max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2">
-                    <i data-lucide="sliders" class="w-4 h-4 text-indigo-600 dark:text-indigo-400"></i>
-                    <h3 class="font-bold text-slate-900 dark:text-white text-base">UPI & Shop Configuration</h3>
-                </div>
-                <button onclick="toggleSettingsModal(false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1">
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-200 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-indigo-600"></i>
+                    <span>Merchant Settings</span>
+                </h3>
+                <button onclick="closeSettingsModal()" class="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
 
-            <form id="settingsForm" onsubmit="saveSettings(event)">
-                <div class="space-y-4 mb-6">
-                    <div>
-                        <label for="upiId" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                            UPI ID (VPA) <span class="text-red-500">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="upiId" 
-                            placeholder="e.g. dhislesachin04@ybl" 
-                            required
-                            class="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all font-mono"
-                        >
-                        <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Accepts personal VPA & business UPI IDs</p>
-                    </div>
-
-                    <div>
-                        <label for="receiverName" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                            Payee / Business Name <span class="text-red-500">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="receiverName" 
-                            placeholder="e.g. Dhisle Hardware And Traders" 
-                            required
-                            maxlength="50"
-                            class="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all"
-                        >
-                    </div>
-
-                    <!-- Shop Logo Upload -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                            Shop Logo / Icon <span class="text-slate-400 dark:text-slate-500 font-normal">(Optional)</span>
-                        </label>
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden" id="logoPreviewBox">
-                                <i data-lucide="image" class="w-5 h-5 text-slate-400"></i>
-                            </div>
-                    <p class="text-slate-400 dark:text-slate-500">Developed by <span class="font-semibold text-slate-700 dark:text-slate-300">sachindhisle04</span></p>
-        </div>
-    </footer>
-
-    <!-- Settings Modal (Without manual file upload, uses logo.png) -->
-    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 transform transition-all max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div class="flex items-center gap-2">
-                    <i data-lucide="sliders" class="w-4 h-4 text-indigo-600 dark:text-indigo-400"></i>
-                    <h3 class="font-bold text-slate-900 dark:text-white text-base">UPI & Shop Configuration</h3>
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label for="settingUpiId" class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-1">UPI ID (VPA)</label>
+                    <input type="text" id="settingUpiId" placeholder="e.g. name@upi" class="w-full bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-3 rounded-xl border border-gray-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
-                <button onclick="toggleSettingsModal(false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
+
+                <div>
+                    <label for="settingMerchantName" class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-1">Shop / Receiver Name</label>
+                    <input type="text" id="settingMerchantName" placeholder="e.g. My Hardware Store" class="w-full bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-3 rounded-xl border border-gray-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
             </div>
 
-            <form id="settingsForm" onsubmit="saveSettings(event)">
-                <div class="space-y-4 mb-6">
-                    <div>
-                        <label for="upiId" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                            UPI ID (VPA) <span class="text-red-500">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="upiId" 
-                            placeholder="e.g. dhislesachin04@ybl" 
-                            required
-                            class="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all font-mono"
-                        >
-                        <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Accepts personal VPA & business UPI IDs</p>
-                    </div>
-
-                    <div>
-                        <label for="receiverName" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                            Payee / Business Name <span class="text-red-500">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="receiverName" 
-                            placeholder="e.g. Dhisle Hardware And Traders" 
-                            required
-                            maxlength="50"
-                            class="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all"
-                        >
-                    </div>
-
-                    <!-- Static Info regarding logo.png -->
-                    <div class="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2.5">
-                        <i data-lucide="image" class="w-4 h-4 text-indigo-500 shrink-0"></i>
-                        <span>Using <strong>logo.png</strong> from root directory for shop branding.</span>
-                    </div>
-                </div>
-
-                <div class="flex gap-2">
-                    <button 
-                        type="button" 
-                        onclick="toggleSettingsModal(false)" 
-                        class="w-1/2 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-sm transition-all"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        type="submit" 
-                        class="w-1/2 py-2.5 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-semibold rounded-xl text-sm transition-all shadow-sm"
-                    >
-                        Save Details
-                    </button>
-                </div>
-            </form>
+            <div class="flex gap-3">
+                <button onclick="closeSettingsModal()" class="flex-1 py-3 text-sm font-semibold bg-gray-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl">Cancel</button>
+                <button onclick="saveSettings()" class="flex-1 py-3 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md">Save Settings</button>
+            </div>
         </div>
     </div>
 
-    <!-- Application Logic -->
-    <script>
-        const DEFAULT_UPI_ID = 'dhislesachin04@ybl';
-        const DEFAULT_RECEIVER_NAME = 'Dhisle Hardware And Traders';
-        const LOGO_PATH = 'logo.png'; // Direct link to logo.png in repository
+    <!-- iOS PWA Banner Modal -->
+    <div id="iosInstallBanner" class="hidden fixed bottom-4 left-4 right-4 bg-slate-900 text-white p-4 rounded-2xl shadow-xl z-50 border border-slate-700 max-w-xl mx-auto flex items-start gap-3">
+        <div class="p-2 bg-indigo-600 rounded-xl flex-shrink-0">
+            <i data-lucide="share" class="w-5 h-5"></i>
+        </div>
+        <div class="flex-1 text-xs">
+            <p class="font-bold mb-0.5">Install QuickPay on iPhone</p>
+            <p class="text-slate-300">Tap the Share icon in Safari bottom bar, then select <span class="font-semibold text-white">'Add to Home Screen'</span>.</p>
+        </div>
+        <button onclick="dismissIosBanner()" class="text-slate-400 hover:text-white p-1">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
 
-        // PWA Install Prompt Variable
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Default Merchant Configuration
+        const DEFAULT_CONFIG = {
+            vpa: 'dhislesachin04@ybl',
+            name: 'Dhisle Hardware And Traders'
+        };
+
+        // Global State Variables
+        let merchantConfig = { ...DEFAULT_CONFIG };
+        let generatedPaymentUri = '';
+        let currentAmount = 0;
+        let isAmountVisible = true;
         let deferredPrompt = null;
 
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            const installBtn = document.getElementById('pwaInstallBtn');
-            if (installBtn) installBtn.classList.remove('hidden');
+        // Initialize App
+        window.addEventListener('load', () => {
+            initTheme();
+            loadSettings();
+            initPWA();
+            lucide.createIcons();
         });
 
-        function installPWA() {
+        // PWA Setup
+        function initPWA() {
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                const installBtn = document.getElementById('pwaInstallBtn');
+                if (installBtn) installBtn.classList.remove('hidden');
+            });
+
+            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+            
+            if (isIos && !isStandalone && !localStorage.getItem('qp_ios_banner_dismissed')) {
+                const iosBanner = document.getElementById('iosInstallBanner');
+                if (iosBanner) iosBanner.classList.remove('hidden');
+            }
+        }
+
+        function triggerPWAInstall() {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the PWA prompt');
-                    }
+                deferredPrompt.userChoice.then(() => {
                     deferredPrompt = null;
-                    document.getElementById('pwaInstallBtn').classList.add('hidden');
+                    const installBtn = document.getElementById('pwaInstallBtn');
+                    if (installBtn) installBtn.classList.add('hidden');
                 });
             }
         }
 
-        // App State
-        let qrCodeInstance = null;
-        let actualAmount = '0.00';
-        let isAmountHidden = false;
+        function dismissIosBanner() {
+            localStorage.setItem('qp_ios_banner_dismissed', 'true');
+            const iosBanner = document.getElementById('iosInstallBanner');
+            if (iosBanner) iosBanner.classList.add('hidden');
+        }
 
-        let config = {
-            upiId: DEFAULT_UPI_ID,
-            receiverName: DEFAULT_RECEIVER_NAME
-        };
-
-        // Initialize Application
-        window.addEventListener('DOMContentLoaded', () => {
-            initTheme();
-            loadSettings();
-            lucide.createIcons();
-        });
-
-        // Theme Toggle Handler
+        // Theme Toggle (Light/Dark Mode)
         function initTheme() {
-            const savedTheme = localStorage.getItem('quickpay_theme');
-            const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            const savedTheme = localStorage.getItem('qp_theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             
-            if (isDark) {
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
                 document.documentElement.classList.add('dark');
             } else {
                 document.documentElement.classList.remove('dark');
             }
-            updateThemeIcon(isDark);
+            updateThemeIcon();
         }
 
         function toggleDarkMode() {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('quickpay_theme', isDark ? 'dark' : 'light');
-            updateThemeIcon(isDark);
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('qp_theme', isDark ? 'dark' : 'light');
+            updateThemeIcon();
         }
 
-        function updateThemeIcon(isDark) {
-            const themeBtn = document.getElementById('themeToggleBtn');
-            if (themeBtn) {
-                themeBtn.innerHTML = `<i data-lucide="${isDark ? 'sun' : 'moon'}" class="w-4 h-4"></i>`;
+        function updateThemeIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const themeIcon = document.getElementById('themeIcon');
+            if (themeIcon) {
+                themeIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+                lucide.createIcons();
             }
-            lucide.createIcons();
         }
 
-        // Load Settings from localStorage with defaults
+        // Settings Handling
         function loadSettings() {
-            const savedUpi = localStorage.getItem('quickpay_upi_id');
-            const savedName = localStorage.getItem('quickpay_receiver_name');
-
-            config.upiId = (savedUpi && savedUpi.trim()) ? savedUpi.trim() : DEFAULT_UPI_ID;
-            config.receiverName = (savedName && savedName.trim()) ? savedName.trim() : DEFAULT_RECEIVER_NAME;
-
-            // Populate modal inputs
-            document.getElementById('upiId').value = config.upiId;
-            document.getElementById('receiverName').value = config.receiverName;
-
-            // Update UI Chip
-            document.getElementById('chipName').textContent = config.receiverName;
-            document.getElementById('chipVpa').textContent = config.upiId;
-
-            updateLogoUI();
-            document.getElementById('settingsBtnText').textContent = 'Settings';
-        }
-
-        function updateLogoUI() {
-            const textAvatar = document.getElementById('merchantAvatarText');
-            const imgAvatar = document.getElementById('merchantAvatarImg');
-
-            textAvatar.textContent = config.receiverName.charAt(0).toUpperCase();
-
-            // Set source directly to logo.png
-            imgAvatar.src = LOGO_PATH;
-            
-            // Try loading logo.png, fallback to text avatar if logo.png doesn't exist
-            imgAvatar.onload = function() {
-                imgAvatar.classList.remove('hidden');
-                textAvatar.classList.add('hidden');
-            };
-            imgAvatar.onerror = function() {
-                imgAvatar.classList.add('hidden');
-                textAvatar.classList.remove('hidden');
-            };
-        }
-
-        // Save Settings to localStorage
-        function saveSettings(e) {
-            e.preventDefault();
-            const upiIdInput = document.getElementById('upiId').value.trim();
-            const receiverNameInput = document.getElementById('receiverName').value.trim();
-
-            const upiRegex = /^[\w\.\-]+@[\w\.\-]+$/;
-            if (!upiRegex.test(upiIdInput)) {
-                showAlert('Please enter a valid UPI ID (e.g. dhislesachin04@ybl).', 'error');
-                return;
-            }
-
-            if (!receiverNameInput) {
-                showAlert('Please enter a receiver/business name.', 'error');
-                return;
-            }
-
-            localStorage.setItem('quickpay_upi_id', upiIdInput);
-            localStorage.setItem('quickpay_receiver_name', receiverNameInput);
-
-            loadSettings();
-            toggleSettingsModal(false);
-            hideAlert();
-            showAlert('UPI details saved successfully!', 'success');
-        }
-
-        function toggleSettingsModal(show) {
-            const modal = document.getElementById('settingsModal');
-            if (show) {
-                modal.classList.remove('hidden');
+            const saved = localStorage.getItem('qp_merchant_settings');
+            if (saved) {
+                try {
+                    merchantConfig = JSON.parse(saved);
+                } catch (e) {
+                    merchantConfig = { ...DEFAULT_CONFIG };
+                }
             } else {
-                modal.classList.add('hidden');
+                merchantConfig = { ...DEFAULT_CONFIG };
+            }
+            updateMerchantUI();
+        }
+
+        function updateMerchantUI() {
+            document.getElementById('displayMerchantName').textContent = merchantConfig.name || DEFAULT_CONFIG.name;
+            document.getElementById('displayUpiId').textContent = merchantConfig.vpa || DEFAULT_CONFIG.vpa;
+            document.getElementById('qrShopName').textContent = merchantConfig.name || DEFAULT_CONFIG.name;
+            document.getElementById('qrUpiId').textContent = merchantConfig.vpa || DEFAULT_CONFIG.vpa;
+
+            // Reset image visibility check
+            const imgEl = document.getElementById('merchantLogoImg');
+            const fallbackEl = document.getElementById('merchantLogoFallback');
+            if (imgEl) imgEl.classList.remove('hidden');
+            if (fallbackEl) fallbackEl.classList.add('hidden');
+        }
+
+        function handleLogoError(img) {
+            img.classList.add('hidden');
+            const fallback = document.getElementById('merchantLogoFallback');
+            if (fallback) {
+                fallback.textContent = (merchantConfig.name || 'D').charAt(0).toUpperCase();
+                fallback.classList.remove('hidden');
             }
         }
 
-        // Toggle amount hide/show feature
+        function openSettingsModal() {
+            document.getElementById('settingUpiId').value = merchantConfig.vpa;
+            document.getElementById('settingMerchantName').value = merchantConfig.name;
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function saveSettings() {
+            const upiId = document.getElementById('settingUpiId').value.trim();
+            const merchantName = document.getElementById('settingMerchantName').value.trim();
+
+            if (!upiId || !upiId.includes('@')) {
+                alert('Please enter a valid UPI ID (e.g. name@upi)');
+                return;
+            }
+
+            merchantConfig.vpa = upiId;
+            merchantConfig.name = merchantName || 'Merchant Payment';
+
+            localStorage.setItem('qp_merchant_settings', JSON.stringify(merchantConfig));
+            updateMerchantUI();
+            closeSettingsModal();
+        }
+
+        // Helper Functions
+        function setQuickAmount(val) {
+            document.getElementById('paymentAmount').value = val;
+        }
+
         function toggleAmountVisibility() {
-            isAmountHidden = !isAmountHidden;
-            const displayAmountEl = document.getElementById('displayAmount');
-            const icon = document.getElementById('toggleAmountIcon');
-
-            if (isAmountHidden) {
-                displayAmountEl.textContent = '₹ ••••••';
-                icon.setAttribute('data-lucide', 'eye-off');
+            isAmountVisible = !isAmountVisible;
+            const amountEl = document.getElementById('displayAmount');
+            const eyeIcon = document.getElementById('amountEyeIcon');
+            
+            if (isAmountVisible) {
+                amountEl.textContent = `₹${currentAmount.toFixed(2)}`;
+                eyeIcon.setAttribute('data-lucide', 'eye');
             } else {
-                displayAmountEl.textContent = `₹${actualAmount}`;
-                icon.setAttribute('data-lucide', 'eye');
+                amountEl.textContent = '₹ ••••';
+                eyeIcon.setAttribute('data-lucide', 'eye-off');
             }
             lucide.createIcons();
         }
 
-        // Validate Amount and Generate Standard NPCI Scannable UPI QR Code
-        function handleGenerateQR(e) {
-            e.preventDefault();
+        // QR Code Logic
+        function generateQRCode() {
+            const inputVal = document.getElementById('paymentAmount').value;
+            const amount = parseFloat(inputVal);
 
-            if (!config.upiId || !config.receiverName) {
-                toggleSettingsModal(true);
-                showAlert('Please configure your UPI ID before generating a QR code.', 'warning');
-                return;
-            }
-
-            const amountInput = document.getElementById('amount').value;
-            const noteInput = document.getElementById('note').value.trim() || 'Payment';
-
-            const amount = parseFloat(amountInput);
             if (isNaN(amount) || amount <= 0) {
-                showAlert('Please enter a valid amount greater than ₹0.', 'error');
+                alert('Please enter a valid payment amount greater than 0.');
                 return;
             }
 
-            actualAmount = amount.toFixed(2);
-            isAmountHidden = false;
+            currentAmount = amount;
+            const formattedAmount = amount.toFixed(2);
 
-            const upiParams = new URLSearchParams();
-            upiParams.append('pa', config.upiId);
-            upiParams.append('pn', config.receiverName);
-            upiParams.append('am', actualAmount);
-            upiParams.append('cu', 'INR');
-            if (noteInput) {
-                upiParams.append('tn', noteInput);
-            }
-            upiParams.append('mode', '02');
-
-            const upiUri = `upi://pay?${upiParams.toString()}`;
+            // Construct standard NPCI compliant UPI URI with fixed amount parameters
+            const pa = encodeURIComponent(merchantConfig.vpa);
+            const pn = encodeURIComponent(merchantConfig.name);
+            const am = encodeURIComponent(formattedAmount);
+            
+            // Standard format for merchant scannability
+            generatedPaymentUri = `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&mode=02&orgid=000000`;
 
             const qrContainer = document.getElementById('qrcode');
             qrContainer.innerHTML = '';
 
-            qrCodeInstance = new QRCode(qrContainer, {
-                text: upiUri,
-                width: 210,
-                height: 210,
-                colorDark: "#0f172a",
-                colorLight: "#ffffff",
+            // Generate high quality scannable QR Code
+            new QRCode(qrContainer, {
+                text: generatedPaymentUri,
+                width: 220,
+                height: 220,
+                colorDark: '#0f172a',
+                colorLight: '#ffffff',
                 correctLevel: QRCode.CorrectLevel.H
             });
 
-            document.getElementById('displayAmount').textContent = `₹${actualAmount}`;
-            document.getElementById('displayReceiverName').textContent = config.receiverName;
-            document.getElementById('displayUpiId').textContent = config.upiId;
+            document.getElementById('displayAmount').textContent = `₹${formattedAmount}`;
+            isAmountVisible = true;
+            const eyeIcon = document.getElementById('amountEyeIcon');
+            if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye');
 
-            const toggleIcon = document.getElementById('toggleAmountIcon');
-            if (toggleIcon) {
-                toggleIcon.setAttribute('data-lucide', 'eye');
-                lucide.createIcons();
-            }
-
-            const displayNoteEl = document.getElementById('displayNote');
-            if (noteInput && noteInput !== 'Payment') {
-                displayNoteEl.textContent = `"${noteInput}"`;
-                displayNoteEl.classList.remove('hidden');
-            } else {
-                displayNoteEl.classList.add('hidden');
-            }
-
-            document.getElementById('paymentFormCard').classList.add('hidden');
-            document.getElementById('qrDisplayCard').classList.remove('hidden');
-            hideAlert();
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.getElementById('amountInputSection').classList.add('hidden');
+            document.getElementById('qrDisplaySection').classList.remove('hidden');
+            lucide.createIcons();
         }
 
-        // Download generated QR code as PNG image canvas
-        function downloadQRCode() {
-            const qrContainer = document.getElementById('qrcode');
-            const img = qrContainer.querySelector('img');
-            const canvas = qrContainer.querySelector('canvas');
-
-            let imageSrc = '';
-            if (canvas) {
-                imageSrc = canvas.toDataURL('image/png');
-            } else if (img && img.src) {
-                imageSrc = img.src;
+        function downloadQR() {
+            const img = document.querySelector('#qrcode img');
+            const canvas = document.querySelector('#qrcode canvas');
+            
+            let dataUrl = '';
+            if (img && img.src) {
+                dataUrl = img.src;
+            } else if (canvas) {
+                dataUrl = canvas.toDataURL('image/png');
             }
 
-            if (!imageSrc) {
-                showAlert('Failed to process QR image for download.', 'error');
+            if (!dataUrl) {
+                alert('QR code image unavailable for download.');
                 return;
             }
 
-            const downloadLink = document.createElement('a');
-            downloadLink.href = imageSrc;
-            downloadLink.download = `UPI-QR-${config.receiverName.replace(/\s+/g, '_')}-₹${actualAmount}.png`;
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = `QuickPay-QR-${currentAmount.toFixed(2)}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function resetQR() {
-            document.getElementById('qrDisplayCard').classList.add('hidden');
-            document.getElementById('paymentFormCard').classList.remove('hidden');
-            document.getElementById('amount').value = '';
-            document.getElementById('note').value = '';
-            document.getElementById('amount').focus();
-        }
-
-        function showAlert(msg, type = 'info') {
-            const alertBox = document.getElementById('alertBox');
-            const alertMessage = document.getElementById('alertMessage');
-
-            alertMessage.textContent = msg;
-
-            alertBox.className = "mb-6 p-3.5 rounded-xl border text-xs font-medium flex items-center gap-2.5 ";
-            if (type === 'error' || type === 'warning') {
-                alertBox.classList.add('bg-red-50', 'dark:bg-red-950/40', 'border-red-200', 'dark:border-red-800', 'text-red-700', 'dark:text-red-300');
-            } else if (type === 'success') {
-                alertBox.classList.add('bg-emerald-50', 'dark:bg-emerald-950/40', 'border-emerald-200', 'dark:border-emerald-800', 'text-emerald-700', 'dark:text-emerald-300');
-            } else {
-                alertBox.classList.add('bg-indigo-50', 'dark:bg-indigo-950/40', 'border-indigo-200', 'dark:border-indigo-800', 'text-indigo-700', 'dark:text-indigo-300');
-            }
-
-            alertBox.classList.remove('hidden');
-        }
-
-        function hideAlert() {
-            document.getElementById('alertBox').classList.add('hidden');
+            document.getElementById('paymentAmount').value = '';
+            document.getElementById('qrDisplaySection').classList.add('hidden');
+            document.getElementById('amountInputSection').classList.remove('hidden');
+            document.getElementById('qrcode').innerHTML = '';
         }
     </script>
 </body>
