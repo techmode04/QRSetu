@@ -1,5 +1,5 @@
 // QRSetu Service Worker
-const CACHE_NAME = 'qrsetu-v1.1.0';
+const CACHE_NAME = 'qrsetu-v1.2.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

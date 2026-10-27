@@ -13,6 +13,7 @@ let currentAmount = 0;
 let isAmountVisible = true;
 let deferredPrompt = null;
 let toastTimeout = null;
+let currentNavState = 'home'; // Navigation state: 'home' | 'qr' | 'success' | 'settings'
 
 // Initialize Application
 window.addEventListener('load', () => {
@@ -20,6 +21,7 @@ window.addEventListener('load', () => {
     loadSettings();
     initPWA();
     registerServiceWorker();
+    initNavigationHistory();
     if (window.lucide) {
         lucide.createIcons();
     }
@@ -36,6 +38,54 @@ window.addEventListener('load', () => {
         }, 400);
     }
 });
+
+// ==========================================
+// Mobile Back Button / Navigation History Manager
+// ==========================================
+function initNavigationHistory() {
+    if (window.history && window.history.replaceState) {
+        history.replaceState({ view: 'home' }, '');
+    }
+    currentNavState = 'home';
+
+    window.addEventListener('popstate', () => {
+        handleMobileBackPress();
+    });
+}
+
+function handleMobileBackPress() {
+    // 1. If Payment Success Modal is open -> close modal and return to home screen
+    const successModal = document.getElementById('paymentSuccessModal');
+    if (successModal && !successModal.classList.contains('hidden')) {
+        successModal.classList.add('hidden');
+        performResetToHome();
+        currentNavState = 'home';
+        return;
+    }
+
+    // 2. If Settings Modal is open -> close settings modal
+    const settingsModal = document.getElementById('settingsModal');
+    if (settingsModal && !settingsModal.classList.contains('hidden')) {
+        settingsModal.classList.add('hidden');
+        const qrDisplay = document.getElementById('qrDisplaySection');
+        if (qrDisplay && !qrDisplay.classList.contains('hidden')) {
+            currentNavState = 'qr';
+        } else {
+            currentNavState = 'home';
+        }
+        return;
+    }
+
+    // 3. If QR Screen is open -> return to home screen
+    const qrDisplay = document.getElementById('qrDisplaySection');
+    if (qrDisplay && !qrDisplay.classList.contains('hidden')) {
+        performResetToHome();
+        currentNavState = 'home';
+        return;
+    }
+
+    currentNavState = 'home';
+}
 
 // Haptic Feedback for Mobile Feel
 function triggerHaptic(duration = 15) {
@@ -372,6 +422,15 @@ function openSettingsModal(isFirstTime = false) {
     if (modal) {
         modal.classList.remove('hidden');
         if (window.lucide) lucide.createIcons();
+
+        // Push state for Settings modal so mobile back button closes modal smoothly
+        if (currentNavState !== 'settings') {
+            if (window.history && window.history.pushState) {
+                history.pushState({ view: 'settings' }, '');
+            }
+            currentNavState = 'settings';
+        }
+
         setTimeout(() => {
             // Focus UPI ID field directly since it's the required field!
             if (upiInput) upiInput.focus();
@@ -383,6 +442,14 @@ function closeSettingsModal() {
     triggerHaptic(10);
     const modal = document.getElementById('settingsModal');
     if (modal) modal.classList.add('hidden');
+
+    if (currentNavState === 'settings') {
+        const qrDisplay = document.getElementById('qrDisplaySection');
+        currentNavState = (qrDisplay && !qrDisplay.classList.contains('hidden')) ? 'qr' : 'home';
+        if (window.history && window.history.back) {
+            history.back();
+        }
+    }
 }
 
 function saveSettings() {
@@ -546,6 +613,14 @@ function generateQRCode() {
 
     // Start 5-Minute Expiry Countdown Timer
     startQRTimer();
+
+    // Push history state so mobile back button returns to home screen
+    if (currentNavState !== 'qr') {
+        if (window.history && window.history.pushState) {
+            history.pushState({ view: 'qr' }, '');
+        }
+        currentNavState = 'qr';
+    }
 
     if (window.lucide) lucide.createIcons();
     showToast(`QR Code generated for ₹${formattedAmount}`, 'qr-code');
@@ -732,25 +807,30 @@ function copyPaymentLink() {
     }
 }
 
-// Reset Back to Input View
-function resetQR() {
-    triggerHaptic(15);
+// Perform Clean Reset Back to Home Screen (Idempotent UI Reset)
+function performResetToHome() {
     stopQRTimer();
 
     const amountInput = document.getElementById('paymentAmount');
-    amountInput.value = '';
-    toggleClearBtn();
+    if (amountInput) {
+        amountInput.value = '';
+        toggleClearBtn();
+    }
 
     // Reset Calculator so new payment starts with a clean slate
     clearCalculator();
 
     const qrDisplay = document.getElementById('qrDisplaySection');
-    qrDisplay.classList.add('hidden');
-    qrDisplay.classList.remove('animate-pop-in');
+    if (qrDisplay) {
+        qrDisplay.classList.add('hidden');
+        qrDisplay.classList.remove('animate-pop-in');
+    }
 
     const inputSection = document.getElementById('amountInputSection');
-    inputSection.classList.remove('hidden');
-    inputSection.classList.add('animate-pop-in');
+    if (inputSection) {
+        inputSection.classList.remove('hidden');
+        inputSection.classList.add('animate-pop-in');
+    }
 
     // Reset QR container & expired overlay
     const overlay = document.getElementById('qrExpiredOverlay');
@@ -761,7 +841,21 @@ function resetQR() {
         qrBox.innerHTML = '';
     }
 
-    amountInput.focus();
+    if (amountInput) amountInput.focus();
+}
+
+// Reset Back to Input View (Triggered by in-app button)
+function resetQR() {
+    triggerHaptic(15);
+    performResetToHome();
+
+    // If QR view was in browser history, pop it so stack stays clean
+    if (currentNavState === 'qr') {
+        currentNavState = 'home';
+        if (window.history && window.history.back) {
+            history.back();
+        }
+    }
 }
 
 // ==========================================
@@ -1066,13 +1160,30 @@ function confirmPaymentReceived() {
         modal.classList.remove('hidden');
         if (window.lucide) lucide.createIcons();
     }
+
+    // Update history state: replace 'qr' with 'success' so pressing mobile back returns directly to home screen
+    if (window.history) {
+        if (currentNavState === 'qr') {
+            history.replaceState({ view: 'success' }, '');
+        } else {
+            history.pushState({ view: 'success' }, '');
+        }
+    }
+    currentNavState = 'success';
 }
 
 function closeSuccessAndNewPayment() {
     triggerHaptic(15);
     const modal = document.getElementById('paymentSuccessModal');
     if (modal) modal.classList.add('hidden');
-    resetQR();
+    performResetToHome();
+
+    if (currentNavState === 'success') {
+        currentNavState = 'home';
+        if (window.history && window.history.back) {
+            history.back();
+        }
+    }
 }
 
 // Number to Hindi Words Converter for Pure Hindi Soundbox Announcement
