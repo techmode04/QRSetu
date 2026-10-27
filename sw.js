@@ -1,5 +1,5 @@
-// QuickPay Service Worker
-const CACHE_NAME = 'quickpay-v1.0.0';
+// QRSetu Service Worker
+const CACHE_NAME = 'qrsetu-v1.1.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -34,24 +34,23 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Network first with Cache fallback for HTML/API, Cache first for assets
+// Fetch Event - Network first with Cache fallback
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Return cache but update in background (stale-while-revalidate)
+        // Return cache and update in background
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
           }
-        }).catch(() => { /* Ignore offline fetch errors */ });
+        }).catch(() => { /* Offline fallback */ });
 
         return cachedResponse;
       }
 
-      // If not in cache, fetch from network
       return fetch(event.request).then((networkResponse) => {
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
@@ -64,7 +63,6 @@ self.addEventListener('fetch', (event) => {
 
         return networkResponse;
       }).catch(() => {
-        // Fallback for navigation requests
         if (event.request.mode === 'navigate') {
           return caches.match('./index.html');
         }

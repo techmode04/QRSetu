@@ -1,13 +1,13 @@
 {
-  "id": "quickpay-pwa-app",
-  "name": "QuickPay - Simple UPI Payments",
-  "short_name": "QuickPay",
-  "description": "Simple UPI Payments with dynamic QR code generation for Indian businesses.",
+  "id": "qrsetu-pwa-app",
+  "name": "QRSetu - Simple UPI Payments",
+  "short_name": "QRSetu",
+  "description": "QRSetu - Simple UPI Payments with dynamic QR code generation for Indian businesses.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0f172a",
+  "background_color": "#0b0f19",
   "theme_color": "#4f46e5",
   "categories": ["finance", "business", "utilities"],
   "icons": [
