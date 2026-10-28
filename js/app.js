@@ -3,7 +3,14 @@
 // Default Configuration (Clean & Neutral for Public Deployment)
 const DEFAULT_CONFIG = {
     vpa: '',
-    name: ''
+    name: '',
+    bank: '',
+    activeAccountIndex: 0,
+    accounts: [
+        { bank: '', upi: '' },
+        { bank: '', upi: '' },
+        { bank: '', upi: '' }
+    ]
 };
 
 // Global State Variables
@@ -226,30 +233,92 @@ function updateThemeIcon() {
     }
 }
 
-// Settings Handling - User Specific
+// Settings Handling - Multi-Account UPI Support
+function detectBankName(upi) {
+    if (!upi) return '';
+    const lower = upi.toLowerCase().trim();
+    if (lower.includes('@oksbi') || lower.includes('@sbi')) return 'SBI';
+    if (lower.includes('@okhdfcbank') || lower.includes('@hdfcbank') || lower.includes('@hdfc')) return 'HDFC';
+    if (lower.includes('@okaxis') || lower.includes('@axisbank')) return 'Axis';
+    if (lower.includes('@okicici') || lower.includes('@icici')) return 'ICICI';
+    if (lower.includes('@paytm')) return 'Paytm';
+    if (lower.includes('@ybl') || lower.includes('@ibl')) return 'PhonePe';
+    if (lower.includes('@kotak')) return 'Kotak';
+    if (lower.includes('@barodampay') || lower.includes('@bob')) return 'BOB';
+    if (lower.includes('@pnb')) return 'PNB';
+    if (lower.includes('@postbank') || lower.includes('@ippb')) return 'IPPB';
+    return '';
+}
+
+function syncActiveAccount() {
+    const activeAcc = getActiveAccount();
+    merchantConfig.vpa = activeAcc.upi || '';
+    merchantConfig.bank = activeAcc.bank || '';
+}
+
+function getActiveAccount() {
+    if (!merchantConfig.accounts || !Array.isArray(merchantConfig.accounts) || merchantConfig.accounts.length === 0) {
+        return { bank: merchantConfig.bank || '', upi: merchantConfig.vpa || '' };
+    }
+    const idx = merchantConfig.activeAccountIndex || 0;
+    const acc = merchantConfig.accounts[idx];
+    if (acc && acc.upi) return acc;
+
+    // Fallback to first non-empty account
+    const firstNonEmpty = merchantConfig.accounts.find(a => a && a.upi);
+    if (firstNonEmpty) return firstNonEmpty;
+
+    return { bank: merchantConfig.bank || '', upi: merchantConfig.vpa || '' };
+}
+
 function loadSettings() {
     const saved = localStorage.getItem('qp_merchant_settings');
     if (saved) {
         try {
             merchantConfig = JSON.parse(saved);
         } catch (e) {
-            merchantConfig = { ...DEFAULT_CONFIG };
+            merchantConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
         }
     } else {
-        merchantConfig = { ...DEFAULT_CONFIG };
+        merchantConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
     }
+
+    // Auto-migration for multi-account support:
+    if (!merchantConfig.accounts || !Array.isArray(merchantConfig.accounts)) {
+        merchantConfig.accounts = [
+            { bank: merchantConfig.bank || detectBankName(merchantConfig.vpa || ''), upi: merchantConfig.vpa || '' },
+            { bank: '', upi: '' },
+            { bank: '', upi: '' }
+        ];
+        merchantConfig.activeAccountIndex = 0;
+    } else {
+        while (merchantConfig.accounts.length < 3) {
+            merchantConfig.accounts.push({ bank: '', upi: '' });
+        }
+    }
+
+    if (typeof merchantConfig.activeAccountIndex !== 'number' || merchantConfig.activeAccountIndex < 0 || merchantConfig.activeAccountIndex > 2) {
+        merchantConfig.activeAccountIndex = 0;
+    }
+
+    syncActiveAccount();
     updateMerchantUI();
 }
 
 function updateMerchantUI() {
-    const isConfigured = Boolean(merchantConfig.vpa);
+    syncActiveAccount();
+    const activeAcc = getActiveAccount();
+    const isConfigured = Boolean(activeAcc.upi);
     const merchantName = merchantConfig.name || (isConfigured ? 'My Business' : 'Set Up Business Name');
-    const upiId = merchantConfig.vpa || 'Tap here to add your UPI ID';
+    const upiId = activeAcc.upi || 'Tap here to add your UPI ID';
+    const bankName = activeAcc.bank || '';
 
     const nameEl = document.getElementById('displayMerchantName');
     const upiEl = document.getElementById('displayUpiId');
+    const bankBadge = document.getElementById('displayBankBadge');
     const qrShopEl = document.getElementById('qrShopName');
     const qrUpiEl = document.getElementById('qrUpiId');
+    const qrBankBadge = document.getElementById('qrBankBadge');
     const verifiedBadge = document.getElementById('merchantVerifiedBadge');
     const avatarInitial = document.getElementById('merchantAvatarInitial');
     const setupAlert = document.getElementById('setupRequiredAlert');
@@ -258,6 +327,24 @@ function updateMerchantUI() {
     if (upiEl) upiEl.textContent = upiId;
     if (qrShopEl) qrShopEl.textContent = merchantName;
     if (qrUpiEl) qrUpiEl.textContent = upiId;
+
+    if (bankBadge) {
+        if (bankName) {
+            bankBadge.textContent = bankName;
+            bankBadge.classList.remove('hidden');
+        } else {
+            bankBadge.classList.add('hidden');
+        }
+    }
+
+    if (qrBankBadge) {
+        if (bankName) {
+            qrBankBadge.textContent = bankName;
+            qrBankBadge.classList.remove('hidden');
+        } else {
+            qrBankBadge.classList.add('hidden');
+        }
+    }
 
     // Avatar Letter or Icon
     if (avatarInitial) {
@@ -384,10 +471,42 @@ function parseAndValidateUpi(rawInput) {
     };
 }
 
+// Active slot index tracking for Modal
+let focusedAccountIndex = 0;
+let modalSelectedAccountIndex = 0;
+
+function setActiveAccountInput(index) {
+    focusedAccountIndex = index;
+}
+
+function updateAccountBankLabel(index) {
+    const bankInput = document.getElementById(`settingBankName_${index}`);
+    const labelSpan = document.getElementById(`accountLabelBank_${index}`);
+    if (bankInput && labelSpan) {
+        const val = bankInput.value.trim();
+        labelSpan.textContent = val ? `(${val})` : '';
+    }
+}
+
+function handleUpiTyping(index) {
+    const upiInput = document.getElementById(`settingUpiId_${index}`);
+    const bankInput = document.getElementById(`settingBankName_${index}`);
+    if (!upiInput || !bankInput) return;
+
+    if (!bankInput.value.trim()) {
+        const detected = detectBankName(upiInput.value);
+        if (detected) {
+            bankInput.value = detected;
+            updateAccountBankLabel(index);
+        }
+    }
+}
+
 // Quick Bank Handle Chip Appender
 function appendUpiHandle(handle) {
     triggerHaptic(10);
-    const upiInput = document.getElementById('settingUpiId');
+    const upiInput = document.getElementById(`settingUpiId_${focusedAccountIndex}`);
+    const bankInput = document.getElementById(`settingBankName_${focusedAccountIndex}`);
     if (!upiInput) return;
 
     let currentVal = upiInput.value.trim().replace(/\s+/g, '');
@@ -397,25 +516,70 @@ function appendUpiHandle(handle) {
 
     upiInput.value = currentVal + handle;
     upiInput.focus();
+
+    if (bankInput && !bankInput.value.trim()) {
+        const detected = detectBankName(upiInput.value);
+        if (detected) {
+            bankInput.value = detected;
+            updateAccountBankLabel(focusedAccountIndex);
+        }
+    }
+}
+
+function selectActiveAccount(index, haptic = true) {
+    if (haptic) triggerHaptic(12);
+    modalSelectedAccountIndex = index;
+    focusedAccountIndex = index;
+
+    for (let i = 0; i < 3; i++) {
+        const card = document.getElementById(`accountCard_${i}`);
+        const radio = document.getElementById(`radioAcc_${i}`);
+        const badge = document.getElementById(`badgeActive_${i}`);
+
+        if (i === index) {
+            if (radio) radio.checked = true;
+            if (badge) badge.classList.remove('hidden');
+            if (card) {
+                card.className = 'p-3 rounded-2xl border transition relative cursor-pointer border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/40 shadow-xs ring-1 ring-indigo-500/30';
+            }
+        } else {
+            if (radio) radio.checked = false;
+            if (badge) badge.classList.add('hidden');
+            if (card) {
+                card.className = 'p-3 rounded-2xl border transition relative cursor-pointer border-slate-200 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-900/50 opacity-85';
+            }
+        }
+    }
 }
 
 function openSettingsModal(isFirstTime = false) {
     triggerHaptic(15);
-    const upiInput = document.getElementById('settingUpiId');
     const nameInput = document.getElementById('settingMerchantName');
-
-    if (upiInput) upiInput.value = merchantConfig.vpa || '';
     if (nameInput) nameInput.value = merchantConfig.name || '';
+
+    // Populate the 3 accounts
+    for (let i = 0; i < 3; i++) {
+        const acc = (merchantConfig.accounts && merchantConfig.accounts[i]) ? merchantConfig.accounts[i] : { bank: '', upi: '' };
+        const bankInput = document.getElementById(`settingBankName_${i}`);
+        const upiInput = document.getElementById(`settingUpiId_${i}`);
+        if (bankInput) bankInput.value = acc.bank || '';
+        if (upiInput) upiInput.value = acc.upi || '';
+        updateAccountBankLabel(i);
+    }
+
+    modalSelectedAccountIndex = merchantConfig.activeAccountIndex || 0;
+    focusedAccountIndex = modalSelectedAccountIndex;
+    selectActiveAccount(modalSelectedAccountIndex, false);
 
     const modalTitle = document.getElementById('settingsModalTitle');
     const modalSubtitle = document.getElementById('settingsModalSubtitle');
 
     if (isFirstTime || !merchantConfig.vpa) {
         if (modalTitle) modalTitle.textContent = 'Welcome! Setup QRSetu';
-        if (modalSubtitle) modalSubtitle.textContent = 'Enter your UPI ID to start accepting payments directly into your bank account.';
+        if (modalSubtitle) modalSubtitle.textContent = 'Enter your Shop Name and UPI ID to start accepting direct bank payments.';
     } else {
-        if (modalTitle) modalTitle.textContent = 'Merchant Settings';
-        if (modalSubtitle) modalSubtitle.textContent = 'Update your UPI ID or Business Name anytime.';
+        if (modalTitle) modalTitle.textContent = 'Merchant & UPI Accounts';
+        if (modalSubtitle) modalSubtitle.textContent = 'Add up to 3 bank UPI IDs. Select which account is active to receive payments.';
     }
 
     const modal = document.getElementById('settingsModal');
@@ -432,8 +596,8 @@ function openSettingsModal(isFirstTime = false) {
         }
 
         setTimeout(() => {
-            // Focus UPI ID field directly since it's the required field!
-            if (upiInput) upiInput.focus();
+            const activeUpiInput = document.getElementById(`settingUpiId_${modalSelectedAccountIndex}`);
+            if (activeUpiInput) activeUpiInput.focus();
         }, 150);
     }
 }
@@ -454,48 +618,88 @@ function closeSettingsModal() {
 
 function saveSettings() {
     triggerHaptic(25);
-    let upiVal = document.getElementById('settingUpiId') ? document.getElementById('settingUpiId').value : '';
-    let nameVal = document.getElementById('settingMerchantName') ? document.getElementById('settingMerchantName').value : '';
+    const nameInput = document.getElementById('settingMerchantName');
+    const nameVal = nameInput ? nameInput.value.trim() : '';
 
-    upiVal = upiVal ? upiVal.trim() : '';
-    nameVal = nameVal ? nameVal.trim() : '';
+    const newAccounts = [];
+    for (let i = 0; i < 3; i++) {
+        let bank = (document.getElementById(`settingBankName_${i}`)?.value || '').trim();
+        let upi = (document.getElementById(`settingUpiId_${i}`)?.value || '').trim().replace(/\s+/g, '');
 
-    // Smart Auto-Swap: If user accidentally typed UPI in the Name field and Name in the UPI field
-    if (nameVal.includes('@') && (!upiVal || !upiVal.includes('@'))) {
-        const temp = upiVal;
-        upiVal = nameVal;
-        nameVal = temp;
-        // Update input fields to reflect the smart swap
-        if (document.getElementById('settingUpiId')) document.getElementById('settingUpiId').value = upiVal;
-        if (document.getElementById('settingMerchantName')) document.getElementById('settingMerchantName').value = nameVal;
+        // Smart Auto-Swap: If user accidentally typed UPI in the Bank field and Bank in the UPI field
+        if (bank.includes('@') && (!upi || !upi.includes('@'))) {
+            const temp = upi;
+            upi = bank;
+            bank = temp;
+            if (document.getElementById(`settingBankName_${i}`)) document.getElementById(`settingBankName_${i}`).value = bank;
+            if (document.getElementById(`settingUpiId_${i}`)) document.getElementById(`settingUpiId_${i}`).value = upi;
+        }
+
+        // Auto-detect bank name if bank empty but UPI present
+        if (!bank && upi) {
+            bank = detectBankName(upi);
+            if (document.getElementById(`settingBankName_${i}`)) document.getElementById(`settingBankName_${i}`).value = bank;
+        }
+
+        newAccounts.push({ bank, upi });
     }
 
-    // Validate UPI
-    const validationResult = parseAndValidateUpi(upiVal);
-    if (!validationResult.valid) {
-        showToast(validationResult.error, 'alert-circle');
-        const upiInput = document.getElementById('settingUpiId');
-        if (upiInput) upiInput.focus();
+    // Validate the chosen active account
+    const activeAcc = newAccounts[modalSelectedAccountIndex];
+    if (!activeAcc || !activeAcc.upi) {
+        showToast(`Account ${modalSelectedAccountIndex + 1} UPI ID cannot be empty`, 'alert-circle');
+        const upiEl = document.getElementById(`settingUpiId_${modalSelectedAccountIndex}`);
+        if (upiEl) upiEl.focus();
         return;
     }
 
-    merchantConfig.vpa = validationResult.upi;
+    const validationResult = parseAndValidateUpi(activeAcc.upi);
+    if (!validationResult.valid) {
+        showToast(validationResult.error, 'alert-circle');
+        const upiEl = document.getElementById(`settingUpiId_${modalSelectedAccountIndex}`);
+        if (upiEl) upiEl.focus();
+        return;
+    }
+    activeAcc.upi = validationResult.upi;
+
+    // Validate any other non-empty accounts
+    for (let i = 0; i < 3; i++) {
+        if (i !== modalSelectedAccountIndex && newAccounts[i].upi) {
+            const res = parseAndValidateUpi(newAccounts[i].upi);
+            if (res.valid) {
+                newAccounts[i].upi = res.upi;
+            }
+        }
+    }
+
     merchantConfig.name = nameVal || 'QRSetu Merchant';
+    merchantConfig.accounts = newAccounts;
+    merchantConfig.activeAccountIndex = modalSelectedAccountIndex;
+    syncActiveAccount();
 
     localStorage.setItem('qp_merchant_settings', JSON.stringify(merchantConfig));
     updateMerchantUI();
     closeSettingsModal();
-    showToast('UPI ID saved successfully!', 'check-check');
+
+    const bankLabel = activeAcc.bank ? ` [${activeAcc.bank}]` : '';
+    showToast(`Active: ${activeAcc.upi}${bankLabel}`, 'check-check');
 }
 
 // Reset Stored Details
 function resetSavedMerchantDetails() {
-    if (confirm('Do you want to reset your saved UPI ID and Shop Name?')) {
+    if (confirm('Do you want to reset all saved UPI accounts and Shop Name?')) {
         localStorage.removeItem('qp_merchant_settings');
-        merchantConfig = { ...DEFAULT_CONFIG };
+        merchantConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+        merchantConfig.accounts = [
+            { bank: '', upi: '' },
+            { bank: '', upi: '' },
+            { bank: '', upi: '' }
+        ];
+        merchantConfig.activeAccountIndex = 0;
+        syncActiveAccount();
         updateMerchantUI();
         closeSettingsModal();
-        showToast('Settings reset to default', 'refresh-cw');
+        showToast('All accounts reset to default', 'refresh-cw');
     }
 }
 
@@ -688,7 +892,8 @@ function downloadQR() {
     // UPI ID subtitle
     ctx.fillStyle = '#64748b';
     ctx.font = '600 20px "JetBrains Mono", Courier, monospace';
-    ctx.fillText(merchantConfig.vpa, W / 2, 212);
+    const bankPrefix = merchantConfig.bank ? `[${merchantConfig.bank}] ` : '';
+    ctx.fillText(`${bankPrefix}${merchantConfig.vpa}`, W / 2, 212);
 
     // Amount Badge Box
     const amtBoxY = 238;
@@ -1130,10 +1335,12 @@ function confirmPaymentReceived() {
     const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
     const utrNumber = `UPI/43${randomDigits}`;
 
+    const displayUpiText = merchantConfig.bank ? `[${merchantConfig.bank}] ${upiId}` : upiId;
+
     currentReceiptData = {
         amount: formattedAmount,
         shopName: shopName,
-        upiId: upiId,
+        upiId: displayUpiText,
         dateTime: fullDateTime,
         utr: utrNumber
     };
@@ -1147,7 +1354,7 @@ function confirmPaymentReceived() {
 
     if (amtEl) amtEl.textContent = `₹ ${formattedAmount}`;
     if (shopEl) shopEl.textContent = `Paid to ${shopName}`;
-    if (upiEl) upiEl.textContent = upiId;
+    if (upiEl) upiEl.textContent = displayUpiText;
     if (timeEl) timeEl.textContent = fullDateTime;
     if (utrEl) utrEl.textContent = utrNumber;
 
